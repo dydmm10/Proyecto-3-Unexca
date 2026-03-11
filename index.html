@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistema de Gestión Estudiantil - UNEXCA</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <!-- Encabezado -->
+  <header class="header">
+    <div class="header-content">
+      <div class="logo">
+        <span class="logo-icon">🎓</span>
+        <div class="logo-text">
+          <h1>Sistema de Gestión Estudiantil</h1>
+          <p>Universidad Nacional Experimental de la Gran Caracas</p>
+        </div>
+      </div>
+      <nav class="nav">
+        <button class="nav-btn active" data-section="dashboard" onclick="showSection('dashboard')">Inicio</button>
+        <button class="nav-btn" data-section="students" onclick="showSection('students')">Estudiantes</button>
+        <button class="nav-btn" data-section="courses" onclick="showSection('courses')">Materias</button>
+        <button class="nav-btn" data-section="grades" onclick="showSection('grades')">Calificaciones</button>
+        <button class="nav-btn" data-section="reports" onclick="showSection('reports')">Reportes</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main-content">
+
+    <!-- Sección: Dashboard -->
+    <section id="section-dashboard" class="section active">
+      <div class="section-header">
+        <h2>Panel de Control</h2>
+        <p>Resumen general del sistema</p>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon">👥</div>
+          <div class="stat-info">
+            <span class="stat-number" id="stat-students">0</span>
+            <span class="stat-label">Estudiantes Registrados</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📚</div>
+          <div class="stat-info">
+            <span class="stat-number" id="stat-courses">0</span>
+            <span class="stat-label">Materias Activas</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📝</div>
+          <div class="stat-info">
+            <span class="stat-number" id="stat-grades">0</span>
+            <span class="stat-label">Calificaciones Registradas</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🏆</div>
+          <div class="stat-info">
+            <span class="stat-number" id="stat-avg">0</span>
+            <span class="stat-label">Promedio General</span>
+          </div>
+        </div>
+      </div>
+      <div class="dashboard-tables">
+        <div class="card">
+          <h3>Últimos Estudiantes Registrados</h3>
+          <table class="data-table" id="recent-students-table">
+            <thead>
+              <tr>
+                <th>Cédula</th>
+                <th>Nombre</th>
+                <th>Semestre</th>
+                <th>Carrera</th>
+              </tr>
+            </thead>
+            <tbody id="recent-students-body">
+              <tr><td colspan="4" class="empty-row">Sin registros</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <h3>Últimas Calificaciones</h3>
+          <table class="data-table" id="recent-grades-table">
+            <thead>
+              <tr>
+                <th>Estudiante</th>
+                <th>Materia</th>
+                <th>Nota</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="recent-grades-body">
+              <tr><td colspan="4" class="empty-row">Sin registros</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Sección: Estudiantes -->
+    <section id="section-students" class="section">
+      <div class="section-header">
+        <h2>Gestión de Estudiantes</h2>
+        <button class="btn btn-primary" onclick="openModal('student-modal')">+ Nuevo Estudiante</button>
+      </div>
+      <div class="card">
+        <div class="search-bar">
+          <input type="text" id="student-search" placeholder="Buscar por nombre, cédula o carrera..." oninput="filterStudents()" />
+        </div>
+        <table class="data-table" id="students-table">
+          <thead>
+            <tr>
+              <th>Cédula</th>
+              <th>Nombre Completo</th>
+              <th>Semestre</th>
+              <th>Carrera</th>
+              <th>Correo</th>
+              <th>Teléfono</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="students-body">
+            <tr><td colspan="7" class="empty-row">No hay estudiantes registrados</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Sección: Materias -->
+    <section id="section-courses" class="section">
+      <div class="section-header">
+        <h2>Gestión de Materias</h2>
+        <button class="btn btn-primary" onclick="openModal('course-modal')">+ Nueva Materia</button>
+      </div>
+      <div class="card">
+        <div class="search-bar">
+          <input type="text" id="course-search" placeholder="Buscar materia..." oninput="filterCourses()" />
+        </div>
+        <table class="data-table" id="courses-table">
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Nombre</th>
+              <th>Semestre</th>
+              <th>Créditos</th>
+              <th>Profesor</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="courses-body">
+            <tr><td colspan="6" class="empty-row">No hay materias registradas</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Sección: Calificaciones -->
+    <section id="section-grades" class="section">
+      <div class="section-header">
+        <h2>Gestión de Calificaciones</h2>
+        <button class="btn btn-primary" onclick="openModal('grade-modal')">+ Nueva Calificación</button>
+      </div>
+      <div class="card">
+        <div class="search-bar">
+          <input type="text" id="grade-search" placeholder="Buscar por estudiante o materia..." oninput="filterGrades()" />
+        </div>
+        <table class="data-table" id="grades-table">
+          <thead>
+            <tr>
+              <th>Estudiante</th>
+              <th>Cédula</th>
+              <th>Materia</th>
+              <th>Nota</th>
+              <th>Período</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="grades-body">
+            <tr><td colspan="7" class="empty-row">No hay calificaciones registradas</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Sección: Reportes -->
+    <section id="section-reports" class="section">
+      <div class="section-header">
+        <h2>Reportes</h2>
+      </div>
+      <div class="reports-grid">
+        <div class="card">
+          <h3>Reporte por Carrera</h3>
+          <div id="report-by-career"></div>
+        </div>
+        <div class="card">
+          <h3>Reporte de Aprobados vs Reprobados</h3>
+          <div id="report-pass-fail"></div>
+        </div>
+        <div class="card">
+          <h3>Promedio por Materia</h3>
+          <div id="report-by-course"></div>
+        </div>
+        <div class="card">
+          <h3>Estudiantes por Semestre</h3>
+          <div id="report-by-semester"></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Exportar Datos</h3>
+        <div class="export-buttons">
+          <button class="btn btn-secondary" onclick="exportStudentsCSV()">📄 Exportar Estudiantes (CSV)</button>
+          <button class="btn btn-secondary" onclick="exportGradesCSV()">📄 Exportar Calificaciones (CSV)</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Modal: Estudiante -->
+  <div id="student-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="student-modal-title">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="student-modal-title">Registrar Estudiante</h3>
+        <button class="modal-close" onclick="closeModal('student-modal')" aria-label="Cerrar">&times;</button>
+      </div>
+      <form id="student-form" onsubmit="saveStudent(event)" novalidate>
+        <input type="hidden" id="student-id" />
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="student-cedula">Cédula *</label>
+            <input type="text" id="student-cedula" placeholder="Ej: V-12345678" required />
+            <span class="field-error" id="err-student-cedula"></span>
+          </div>
+          <div class="form-group">
+            <label for="student-nombre">Nombre *</label>
+            <input type="text" id="student-nombre" placeholder="Primer nombre" required />
+            <span class="field-error" id="err-student-nombre"></span>
+          </div>
+          <div class="form-group">
+            <label for="student-apellido">Apellido *</label>
+            <input type="text" id="student-apellido" placeholder="Primer apellido" required />
+            <span class="field-error" id="err-student-apellido"></span>
+          </div>
+          <div class="form-group">
+            <label for="student-semestre">Semestre *</label>
+            <select id="student-semestre" required>
+              <option value="">Seleccione...</option>
+              <option value="1">1er Semestre</option>
+              <option value="2">2do Semestre</option>
+              <option value="3">3er Semestre</option>
+              <option value="4">4to Semestre</option>
+              <option value="5">5to Semestre</option>
+              <option value="6">6to Semestre</option>
+              <option value="7">7mo Semestre</option>
+              <option value="8">8vo Semestre</option>
+              <option value="9">9no Semestre</option>
+              <option value="10">10mo Semestre</option>
+            </select>
+            <span class="field-error" id="err-student-semestre"></span>
+          </div>
+          <div class="form-group">
+            <label for="student-carrera">Carrera *</label>
+            <select id="student-carrera" required>
+              <option value="">Seleccione...</option>
+              <option value="Ingeniería en Informática">Ingeniería en Informática</option>
+              <option value="Ingeniería Industrial">Ingeniería Industrial</option>
+              <option value="Ingeniería Civil">Ingeniería Civil</option>
+              <option value="Administración">Administración</option>
+              <option value="Contaduría Pública">Contaduría Pública</option>
+              <option value="Educación">Educación</option>
+              <option value="Derecho">Derecho</option>
+            </select>
+            <span class="field-error" id="err-student-carrera"></span>
+          </div>
+          <div class="form-group">
+            <label for="student-correo">Correo Electrónico</label>
+            <input type="email" id="student-correo" placeholder="correo@ejemplo.com" />
+            <span class="field-error" id="err-student-correo"></span>
+          </div>
+          <div class="form-group">
+            <label for="student-telefono">Teléfono</label>
+            <input type="text" id="student-telefono" placeholder="Ej: 0412-1234567" />
+          </div>
+          <div class="form-group">
+            <label for="student-fecha-nacimiento">Fecha de Nacimiento</label>
+            <input type="date" id="student-fecha-nacimiento" />
+          </div>
+        </div>
+        <div class="form-group full-width">
+          <label for="student-direccion">Dirección</label>
+          <textarea id="student-direccion" rows="2" placeholder="Dirección de residencia"></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('student-modal')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Materia -->
+  <div id="course-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="course-modal-title">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="course-modal-title">Registrar Materia</h3>
+        <button class="modal-close" onclick="closeModal('course-modal')" aria-label="Cerrar">&times;</button>
+      </div>
+      <form id="course-form" onsubmit="saveCourse(event)" novalidate>
+        <input type="hidden" id="course-id" />
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="course-codigo">Código *</label>
+            <input type="text" id="course-codigo" placeholder="Ej: INF-301" required />
+            <span class="field-error" id="err-course-codigo"></span>
+          </div>
+          <div class="form-group">
+            <label for="course-nombre">Nombre *</label>
+            <input type="text" id="course-nombre" placeholder="Nombre de la materia" required />
+            <span class="field-error" id="err-course-nombre"></span>
+          </div>
+          <div class="form-group">
+            <label for="course-semestre">Semestre *</label>
+            <select id="course-semestre" required>
+              <option value="">Seleccione...</option>
+              <option value="1">1er Semestre</option>
+              <option value="2">2do Semestre</option>
+              <option value="3">3er Semestre</option>
+              <option value="4">4to Semestre</option>
+              <option value="5">5to Semestre</option>
+              <option value="6">6to Semestre</option>
+              <option value="7">7mo Semestre</option>
+              <option value="8">8vo Semestre</option>
+              <option value="9">9no Semestre</option>
+              <option value="10">10mo Semestre</option>
+            </select>
+            <span class="field-error" id="err-course-semestre"></span>
+          </div>
+          <div class="form-group">
+            <label for="course-creditos">Unidades de Crédito *</label>
+            <input type="number" id="course-creditos" min="1" max="10" placeholder="Ej: 4" required />
+            <span class="field-error" id="err-course-creditos"></span>
+          </div>
+          <div class="form-group">
+            <label for="course-profesor">Profesor</label>
+            <input type="text" id="course-profesor" placeholder="Nombre del profesor" />
+          </div>
+          <div class="form-group">
+            <label for="course-horario">Horario</label>
+            <input type="text" id="course-horario" placeholder="Ej: Lun-Mie 8:00-10:00" />
+          </div>
+        </div>
+        <div class="form-group full-width">
+          <label for="course-descripcion">Descripción</label>
+          <textarea id="course-descripcion" rows="2" placeholder="Descripción de la materia"></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('course-modal')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Calificación -->
+  <div id="grade-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="grade-modal-title">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="grade-modal-title">Registrar Calificación</h3>
+        <button class="modal-close" onclick="closeModal('grade-modal')" aria-label="Cerrar">&times;</button>
+      </div>
+      <form id="grade-form" onsubmit="saveGrade(event)" novalidate>
+        <input type="hidden" id="grade-id" />
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="grade-student">Estudiante *</label>
+            <select id="grade-student" required>
+              <option value="">Seleccione estudiante...</option>
+            </select>
+            <span class="field-error" id="err-grade-student"></span>
+          </div>
+          <div class="form-group">
+            <label for="grade-course">Materia *</label>
+            <select id="grade-course" required>
+              <option value="">Seleccione materia...</option>
+            </select>
+            <span class="field-error" id="err-grade-course"></span>
+          </div>
+          <div class="form-group">
+            <label for="grade-nota">Nota (0 - 20) *</label>
+            <input type="number" id="grade-nota" min="0" max="20" step="0.1" placeholder="Ej: 15" required />
+            <span class="field-error" id="err-grade-nota"></span>
+          </div>
+          <div class="form-group">
+            <label for="grade-periodo">Período *</label>
+            <input type="text" id="grade-periodo" placeholder="Ej: 2025-I" required />
+            <span class="field-error" id="err-grade-periodo"></span>
+          </div>
+          <div class="form-group">
+            <label for="grade-tipo">Tipo de Evaluación</label>
+            <select id="grade-tipo">
+              <option value="Final">Final</option>
+              <option value="Parcial 1">Parcial 1</option>
+              <option value="Parcial 2">Parcial 2</option>
+              <option value="Parcial 3">Parcial 3</option>
+              <option value="Recuperación">Recuperación</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('grade-modal')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Confirmación de eliminación -->
+  <div id="confirm-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h3 id="confirm-modal-title">Confirmar Eliminación</h3>
+        <button class="modal-close" onclick="closeModal('confirm-modal')" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="confirm-message">¿Está seguro que desea eliminar este registro?</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('confirm-modal')">Cancelar</button>
+        <button class="btn btn-danger" id="confirm-delete-btn">Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notificación toast -->
+  <div id="toast" class="toast" role="alert" aria-live="polite"></div>
+
+  <script src="js/storage.js"></script>
+  <script src="js/students.js"></script>
+  <script src="js/courses.js"></script>
+  <script src="js/grades.js"></script>
+  <script src="js/reports.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
