@@ -49,21 +49,53 @@ class _RegisterPageState extends State<RegisterPage> {
     }
 
     setState(() => _loading = true);
-    final success = await _authService.register(
-      _emailController.text.trim(),
-      _passwordController.text,
-    );
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          success ? 'Cuenta creada exitosamente' : 'No se pudo crear la cuenta',
+    try {
+      final email = _emailController.text.trim();
+      final exists = await _authService.emailExists(email);
+      if (!mounted) return;
+
+      if (exists == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ese email ya está registrado.')),
+        );
+        return;
+      }
+
+      if (exists == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No se pudo verificar la cuenta. Verifica que el backend esté activo.',
+            ),
+          ),
+        );
+        return;
+      }
+
+      final result = await _authService.registerWithMessage(
+        email,
+        _passwordController.text,
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result.success
+                ? 'Cuenta creada exitosamente'
+                : (result.message ?? 'No se pudo crear la cuenta.'),
+          ),
         ),
-      ),
-    );
-    setState(() => _loading = false);
-    if (success) {
-      Navigator.of(context).pop();
+      );
+
+      if (result.success) {
+        Navigator.of(context).pop();
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 
