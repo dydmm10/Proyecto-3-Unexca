@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'register_page.dart';
 import 'forgot_password_page.dart';
+import 'clientes_page.dart';
+import 'tecnicos_page.dart';
 import 'services/auth_service.dart';
+import 'register_tecnico_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -13,7 +16,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Proyecto',
+      title: 'Atención de Reclamos y Servicio Técnico (ARES)',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         appBarTheme: const AppBarTheme(
@@ -46,7 +49,7 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _usuarioController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _obscure = true;
   bool _loading = false;
@@ -54,7 +57,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _usuarioController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -63,14 +66,27 @@ class _LoginPageState extends State<LoginPage> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
 
-    final email = _emailController.text.trim();
+    final usuario = _usuarioController.text.trim();
     final password = _passwordController.text;
 
     try {
-      final token = await _authService.login(email, password);
+      final loginData = await _authService.login(usuario, password);
       if (!mounted) return;
 
-      if (token != null) {
+      if (loginData != null) {
+        final rol = loginData['rol'] ?? '';
+        final nombre = loginData['nombre'] ?? '';
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '¡Bienvenido${rol == 'tecnico' ? ' Técnico' : ''} $nombre!',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            backgroundColor: rol == 'tecnico' ? Colors.blue : Colors.green,
+          ),
+        );
+        
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const HomePage()),
         );
@@ -90,11 +106,10 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  String? _validateEmail(String? v) {
-    if (v == null || v.trim().isEmpty) return 'Ingresa un email';
-    final email = v.trim();
-    final regex = RegExp(r"^[^@\s]+@[^@\s]+\.[^@\s]+$");
-    if (!regex.hasMatch(email)) return 'Email no válido';
+  String? _validateUsuario(String? v) {
+    if (v == null || v.trim().isEmpty) return 'Ingresa un usuario';
+    final usuario = v.trim();
+    if (usuario.length < 3) return 'El usuario debe tener al menos 3 caracteres';
     return null;
   }
 
@@ -112,7 +127,7 @@ class _LoginPageState extends State<LoginPage> {
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Aplicacion Movil'),
+            const Text('Atención de Reclamos y Servicio Técnico (ARES)'),
             const SizedBox(width: 8),
             // Logo to the right of the title; place `assets/unexca_logo.png` in project
             Image.asset(
@@ -141,13 +156,13 @@ class _LoginPageState extends State<LoginPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     TextFormField(
-                      controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
+                      controller: _usuarioController,
+                      keyboardType: TextInputType.text,
                       decoration: const InputDecoration(
-                        labelText: 'Email',
-                        prefixIcon: Icon(Icons.email),
+                        labelText: 'Usuario',
+                        prefixIcon: Icon(Icons.person),
                       ),
-                      validator: _validateEmail,
+                      validator: _validateUsuario,
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
@@ -215,8 +230,67 @@ class _LoginPageState extends State<LoginPage> {
   }
 }
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  final AuthService _authService = AuthService(AuthService.defaultBaseUrl);
+  bool _isCliente = false;
+  bool _isTecnico = false;
+  bool _isAdministrador = false;
+  bool _isMaster = false;
+  bool _hasDataMasterAccess = false; // Para controlar acceso a datos maestros
+  String _userName = '';
+  String _userRole = '';
+  Color _roleColor = Colors.grey;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserRole();
+  }
+
+  Future<void> _loadUserRole() async {
+    final isCliente = await _authService.isCliente();
+    final isTecnico = await _authService.isTecnicoPriv();
+    final isAdministrador = await _authService.isAdministrador();
+    final isMaster = await _authService.isMaster();
+    final userName = await _authService.getNombre();
+    
+    String role = '';
+    Color roleColor = Colors.grey;
+    
+    if (isMaster) {
+      role = 'Master';
+      roleColor = const Color(0xFFE74C3C); // Rojo
+    } else if (isAdministrador) {
+      role = 'Administrador';
+      roleColor = const Color(0xFF3498DB); // Azul
+    } else if (isTecnico) {
+      role = 'Técnico';
+      roleColor = const Color(0xFF27AE60); // Verde
+    } else {
+      role = 'Cliente';
+      roleColor = const Color(0xFF95A5A6); // Gris
+    }
+    
+    if (mounted) {
+      setState(() {
+        _isCliente = isCliente;
+        _isTecnico = isTecnico;
+        _isAdministrador = isAdministrador;
+        _isMaster = isMaster;
+        _hasDataMasterAccess = isTecnico || isAdministrador || isMaster;
+        _userName = userName ?? 'Usuario';
+        _userRole = role;
+        _roleColor = roleColor;
+      });
+    }
+  }
 
   void _openBlankModule(BuildContext context, String title) {
     Navigator.of(context).push(
@@ -250,7 +324,7 @@ class HomePage extends StatelessWidget {
                       children: [
                         const Expanded(
                           child: Text(
-                            'Aplicativo Movil',
+                            'Atención de Reclamos y Servicio Técnico (ARES)',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 20,
@@ -258,6 +332,12 @@ class HomePage extends StatelessWidget {
                             ),
                           ),
                         ),
+                        Image.asset(
+                          'assets/logo_unexca.jpg',
+                          height: 32,
+                          fit: BoxFit.contain,
+                        ),
+                        const SizedBox(width: 8),
                         IconButton(
                           onPressed: () {
                             Navigator.of(context).pushReplacement(
@@ -270,35 +350,56 @@ class HomePage extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
+                    // Mensaje de bienvenida con nombre y rol
                     Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.12),
+                        color: Colors.white.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.3),
+                          width: 1,
+                        ),
                       ),
                       child: Row(
                         children: [
+                          Icon(
+                            Icons.person_outline,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
                           Expanded(
-                            child: _TopMenuButton(
-                              icon: Icons.home,
-                              label: 'Hogar',
-                              iconColor: Colors.white,
-                              textColor: Colors.white,
-                              onTap: () => _openBlankModule(context, 'Hogar'),
+                            child: Text(
+                              _userName,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
-                          Expanded(
-                            child: _TopMenuButton(
-                              icon: Icons.event_note,
-                              label: 'Próximo',
-                              iconColor: Colors.white70,
-                              textColor: Colors.white70,
-                              onTap: () => _openBlankModule(context, 'Próximo'),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: _roleColor,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              _userRole,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
+                    const SizedBox(height: 10),
                   ],
                 ),
               ),
@@ -314,20 +415,20 @@ class HomePage extends StatelessWidget {
                           Expanded(
                             child: _DashboardActionTile(
                               icon: Icons.assignment,
-                              label: 'Orden de trabajo',
+                              label: 'Ordenes de trabajo',
                               onTap: () => _openBlankModule(
                                 context,
-                                'Orden de trabajo',
+                                'Ordenes de trabajo',
                               ),
                             ),
                           ),
                           Expanded(
                             child: _DashboardActionTile(
                               icon: Icons.assignment_add,
-                              label: 'Solicitud de mantenimiento',
+                              label: 'Ordenes de mantenimiento',
                               onTap: () => _openBlankModule(
                                 context,
-                                'Solicitud de mantenimiento',
+                                'Ordenes de mantenimiento',
                               ),
                             ),
                           ),
@@ -361,7 +462,7 @@ class HomePage extends StatelessWidget {
                             _openBlankModule(context, 'Crear orden de trabajo'),
                         icon: const Icon(Icons.add, color: Color(0xFF4A93C9)),
                         label: const Text(
-                          'Crear orden de trabajo',
+                          'Crear orden de trabajo/mantenimiento',
                           style: TextStyle(
                             color: Color(0xFF4A93C9),
                             fontWeight: FontWeight.w700,
@@ -371,76 +472,78 @@ class HomePage extends StatelessWidget {
                       SizedBox(height: 12),
                       Divider(height: 1),
                       SizedBox(height: 10),
-                      Text(
-                        'Datos maestros',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black54,
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _DashboardActionTile(
-                              icon: Icons.devices,
-                              label: 'Equipos',
-                              onTap: () => _openBlankModule(
-                                context,
-                                'Equipo',
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: _DashboardActionTile(
-                              icon: Icons.person,
-                              label: 'Usuarios',
-                              onTap: () => _openBlankModule(
-                                context,
-                                'Usuarios',
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: _DashboardActionTile(
-                              icon: Icons.person_2,
-                              label: 'Clientes',
-                              onTap: () => _openBlankModule(
-                                context,
-                                'Clientes',
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 14),
-                      Divider(height: 1),
-                      SizedBox(height: 8),
-                      TextButton.icon(
-                        onPressed: () =>
-                            _openBlankModule(context, 'Agregar nuevo equipo'),
-                        icon: const Icon(Icons.add, color: Color(0xFF5D7E93)),
-                        label: const Text(
-                          'Agregar nuevo equipo',
+                      // Solo mostrar datos maestros si tiene acceso
+                      if (_hasDataMasterAccess) ...[
+                        Text(
+                          'Datos maestros',
                           style: TextStyle(
-                            color: Color(0xFF5D7E93),
-                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black54,
                           ),
                         ),
-                      ),
-                      TextButton.icon(
-                        onPressed: () =>
-                            _openBlankModule(context, 'Agregar nuevo usuario'),
-                        icon: const Icon(Icons.add, color: Color(0xFF5D7E93)),
-                        label: const Text(
-                          'Agregar nuevo usuario',
-                          style: TextStyle(
-                            color: Color(0xFF5D7E93),
-                            fontWeight: FontWeight.w700,
+                        SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _DashboardActionTile(
+                                icon: Icons.devices,
+                                label: 'Equipos',
+                                onTap: () => _openBlankModule(
+                                  context,
+                                  'Equipos',
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: _DashboardActionTile(
+                                icon: Icons.person,
+                                label: 'Tecnicos',
+                                onTap: () => _openBlankModule(
+                                  context,
+                                  'Tecnicos',
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: _DashboardActionTile(
+                                icon: Icons.person_2,
+                                label: 'Clientes',
+                                onTap: () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const ClientesPage(),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 14),
+                        TextButton.icon(
+                          onPressed: () =>
+                              _openBlankModule(context, 'Agregar nuevo equipo'),
+                          icon: const Icon(Icons.add, color: Color(0xFF4A93C9)),
+                          label: const Text(
+                            'Agregar nuevo equipo',
+                            style: TextStyle(
+                              color: Color(0xFF4A93C9),
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
-                      ),
+                        TextButton.icon(
+                          onPressed: () =>
+                              _openBlankModule(context, 'Agregar nuevo técnico'),
+                          icon: const Icon(Icons.add, color: Color(0xFF4A93C9)),
+                          label: const Text(
+                            'Agregar nuevo tecnico',
+                            style: TextStyle(
+                              color: Color(0xFF4A93C9),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
                       SizedBox(height: 14),
                     ],
                   ),
@@ -546,15 +649,23 @@ class BlankModulePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (title == 'Orden de trabajo') {
+    if (title == 'Ordenes de trabajo') {
       return const WorkOrdersListPage();
+    }
+
+    if (title == 'Ordenes de mantenimiento') {
+      return const MaintenanceOrdersListPage();
     }
 
     if (title == 'Horario de servicio') {
       return const ServiceSchedulePage();
     }
 
-    if (title == 'Equipo') {
+    if (title == 'Crear orden de trabajo') {
+      return const CreateWorkOrderPage();
+    }
+
+    if (title == 'Equipos') {
       return const EquipmentListPage();
     }
 
@@ -566,8 +677,16 @@ class BlankModulePage extends StatelessWidget {
       return const CreateWorkOrderPage();
     }
 
+    if (title == 'Tecnicos') {
+      return const TecnicosPage();
+    }
+
+    if (title == 'Agregar nuevo técnico') {
+      return const RegisterTecnicoPage();
+    }
+
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
+      appBar: CustomAppBar(title: title),
       body: const SizedBox.expand(),
     );
   }
@@ -580,52 +699,8 @@ class ServiceSchedulePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF2F2F2),
-      appBar: AppBar(
-        toolbarHeight: 88,
-        titleSpacing: 0,
-        title: Container(
-          margin: const EdgeInsets.only(right: 12),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: const Color(0xFFAED8F0),
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    Text(
-                      'Aplicacion Movil',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Horario de servicio',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF37474F),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 10),
-              Image.asset(
-                'assets/logo_unexca.jpg',
-                height: 48,
-                fit: BoxFit.contain,
-              ),
-            ],
-          ),
-        ),
+      appBar: const CustomAppBar(
+        title: 'Horario de servicio',
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -760,6 +835,66 @@ class _BottomPointClipper extends CustomClipper<Path> {
   bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
 }
 
+class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
+  final String title;
+  final List<Widget>? actions;
+  final double? toolbarHeight;
+
+  const CustomAppBar({
+    Key? key,
+    required this.title,
+    this.actions,
+    this.toolbarHeight = 88,
+  }) : super(key: key);
+
+  @override
+  Size get preferredSize => Size.fromHeight(toolbarHeight ?? 88);
+
+  @override
+  Widget build(BuildContext context) {
+    return AppBar(
+      toolbarHeight: toolbarHeight,
+      titleSpacing: 0,
+      backgroundColor: const Color(0xFF0A88C6),
+      title: Container(
+        margin: const EdgeInsets.only(right: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFAED8F0),
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Image.asset(
+              'assets/logo_unexca.jpg',
+              height: 48,
+              fit: BoxFit.contain,
+            ),
+          ],
+        ),
+      ),
+      actions: actions,
+    );
+  }
+}
+
 class EquipmentListPage extends StatefulWidget {
   const EquipmentListPage({Key? key}) : super(key: key);
 
@@ -789,16 +924,39 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
     if (q.isEmpty) return all;
 
     return all.where((e) {
-      return e.brand.toLowerCase().contains(q) ||
-          e.model.toLowerCase().contains(q) ||
+      return e.marca.toLowerCase().contains(q) ||
+          e.modelo.toLowerCase().contains(q) ||
           e.title.toLowerCase().contains(q) ||
           e.serial.toLowerCase().contains(q) ||
-          e.type.toLowerCase().contains(q);
+          e.tipo.toLowerCase().contains(q) ||
+          (e.nombreCliente?.toLowerCase().contains(q) ?? false) ||
+          (e.usuarioCliente?.toLowerCase().contains(q) ?? false);
     }).toList();
   }
 
-  Future<void> _deleteEquipment(int id) async {
-    final result = await _authService.deleteEquipment(id);
+  Future<void> _deleteEquipment(int codEquipos, String marca, String modelo, String serial) async {
+    // Mostrar diálogo de confirmación
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('¿Eliminar equipo?'),
+        content: Text('¿Estás seguro de que quieres eliminar el equipo?\n\nMarca: $marca\nModelo: $modelo\nSerial: $serial'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('Eliminar', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmado != true) return;
+
+    final result = await _authService.deleteEquipment(codEquipos);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(result.message ?? 'Operación finalizada.')),
@@ -812,11 +970,8 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF0F2F5),
-      appBar: AppBar(
-        title: const Text(
-          'EQUIPOS',
-          style: TextStyle(fontWeight: FontWeight.w700),
-        ),
+      appBar: const CustomAppBar(
+        title: 'Equipos',
       ),
       body: Center(
         child: ConstrainedBox(
@@ -882,44 +1037,104 @@ class _EquipmentListPageState extends State<EquipmentListPage> {
                                   ),
                                 ),
                               ),
-                              child: ListTile(
-                                title: Text(
-                                  item.title,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                subtitle: Text('Serial: ${item.serial}'),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 5,
+                                    // Fila principal: Tipo y acciones
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF0A88C6),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: Text(
+                                            item.tipo,
+                                            style: const TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                        const Spacer(),
+                                        IconButton(
+                                          tooltip: 'Eliminar',
+                                          onPressed: () =>
+                                              _deleteEquipment(item.codEquipos, item.marca, item.modelo, item.serial),
+                                          icon: const Icon(
+                                            Icons.delete_outline,
+                                            color: Colors.redAccent,
+                                            size: 20,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    
+                                    // Marca y Modelo
+                                    Text(
+                                      '${item.marca} ${item.modelo}',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF2C3E50),
                                       ),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFDCE7F8),
-                                        borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    
+                                    // Serial
+                                    Text(
+                                      'Serial: ${item.serial}',
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        color: Color(0xFF7F8C8D),
                                       ),
-                                      child: Text(
-                                        item.type,
-                                        style: const TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w700,
-                                          color: Color(0xFF5679B6),
+                                    ),
+                                    
+                                    // Cliente (si existe)
+                                    if (item.nombreCliente != null) ...[
+                                      const SizedBox(height: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFE8F5E8),
+                                          borderRadius: BorderRadius.circular(4),
+                                          border: Border.all(
+                                            color: const Color(0xFF4CAF50),
+                                            width: 1,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(
+                                              Icons.person_outline,
+                                              size: 12,
+                                              color: Color(0xFF4CAF50),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              '${item.nombreCliente} (${item.usuarioCliente})',
+                                              style: const TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                                color: Color(0xFF2E7D32),
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                    ),
-                                    IconButton(
-                                      tooltip: 'Eliminar',
-                                      onPressed: () =>
-                                          _deleteEquipment(item.id),
-                                      icon: const Icon(
-                                        Icons.delete_outline,
-                                        color: Colors.redAccent,
-                                      ),
-                                    ),
+                                    ],
                                   ],
                                 ),
                               ),
@@ -952,8 +1167,17 @@ class _RegisterEquipmentPageState extends State<RegisterEquipmentPage> {
   final TextEditingController _brandController = TextEditingController();
   final TextEditingController _modelController = TextEditingController();
   final TextEditingController _serialController = TextEditingController();
-  String _equipmentType = 'LAPTOP';
+  String _equipmentType = 'Laptop';
   bool _saving = false;
+  List<Cliente> _clientes = [];
+  Cliente? _selectedCliente;
+  bool _loadingClientes = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadClientes();
+  }
 
   @override
   void dispose() {
@@ -963,15 +1187,33 @@ class _RegisterEquipmentPageState extends State<RegisterEquipmentPage> {
     super.dispose();
   }
 
+  Future<void> _loadClientes() async {
+    setState(() => _loadingClientes = true);
+    try {
+      final clientes = await _authService.fetchClientes();
+      if (mounted) {
+        setState(() {
+          _clientes = clientes;
+          _loadingClientes = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loadingClientes = false);
+      }
+    }
+  }
+
   Future<void> _saveEquipment() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _saving = true);
     final result = await _authService.createEquipment(
-      type: _equipmentType,
-      brand: _brandController.text.trim(),
-      model: _modelController.text.trim(),
+      tipo: _equipmentType,
+      marca: _brandController.text.trim(),
+      modelo: _modelController.text.trim(),
       serial: _serialController.text.trim(),
+      cod_cliente: _selectedCliente?.codCliente,
     );
     if (!mounted) return;
     setState(() => _saving = false);
@@ -993,7 +1235,9 @@ class _RegisterEquipmentPageState extends State<RegisterEquipmentPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF0F2F5),
-      appBar: AppBar(title: const Text('Agregar nuevo equipo')),
+      appBar: const CustomAppBar(
+        title: 'Agregar nuevo equipo',
+      ),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
@@ -1041,7 +1285,7 @@ class _RegisterEquipmentPageState extends State<RegisterEquipmentPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'TIPO DE EQUIPO',
+                          'CATEGORIA',
                           style: TextStyle(
                             color: Color(0xFF4E5D6C),
                             fontWeight: FontWeight.w700,
@@ -1053,21 +1297,21 @@ class _RegisterEquipmentPageState extends State<RegisterEquipmentPage> {
                           children: [
                             Expanded(
                               child: _TypeChoiceButton(
-                                label: 'LAPTOP',
-                                selected: _equipmentType == 'LAPTOP',
+                                label: 'Laptop',
+                                selected: _equipmentType == 'Laptop',
                                 onTap: () {
-                                  setState(() => _equipmentType = 'LAPTOP');
+                                  setState(() => _equipmentType = 'Laptop');
                                 },
                               ),
                             ),
                             const SizedBox(width: 10),
                             Expanded(
                               child: _TypeChoiceButton(
-                                label: 'PC\nESCRITORIO',
-                                selected: _equipmentType == 'PC ESCRITORIO',
+                                label: 'PC\nEscritorio',
+                                selected: _equipmentType == 'PC Escritorio',
                                 onTap: () {
                                   setState(
-                                      () => _equipmentType = 'PC ESCRITORIO');
+                                      () => _equipmentType = 'PC Escritorio');
                                 },
                               ),
                             ),
@@ -1102,6 +1346,77 @@ class _RegisterEquipmentPageState extends State<RegisterEquipmentPage> {
                           validator: (v) => v == null || v.trim().isEmpty
                               ? 'Ingresa el serial'
                               : null,
+                        ),
+                        const SizedBox(height: 16),
+                        const _FieldLabel(text: 'CLIENTE (OPCIONAL)'),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF0F1F3),
+                            border: Border.all(color: const Color(0xFFC4CAD1)),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: _loadingClientes
+                              ? Row(
+                                  children: [
+                                    const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Color(0xFF0A88C6),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      'Cargando clientes...',
+                                      style: TextStyle(
+                                        color: const Color(0xFF8B95A1),
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : DropdownButtonHideUnderline(
+                                  child: DropdownButton<Cliente?>(
+                                    value: _selectedCliente,
+                                    isExpanded: true,
+                                    hint: Text(
+                                      'Seleccionar cliente (opcional)',
+                                      style: TextStyle(
+                                        color: const Color(0xFF8B95A1),
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    items: [
+                                      const DropdownMenuItem<Cliente?>(
+                                        value: null,
+                                        child: Text(
+                                          'Sin asignar a cliente',
+                                          style: TextStyle(
+                                            color: Color(0xFF8B95A1),
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ),
+                                      ..._clientes.map((cliente) {
+                                        return DropdownMenuItem<Cliente>(
+                                          value: cliente,
+                                          child: Text(
+                                            '${cliente.nombre} (${cliente.usuario})',
+                                            style: const TextStyle(fontSize: 14),
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ],
+                                    onChanged: (Cliente? value) {
+                                      setState(() {
+                                        _selectedCliente = value;
+                                      });
+                                    },
+                                  ),
+                                ),
                         ),
                         const SizedBox(height: 20),
                         SizedBox(
@@ -1289,7 +1604,8 @@ class _WorkOrdersListPageState extends State<WorkOrdersListPage> {
       MaterialPageRoute(builder: (_) => const CreateWorkOrderPage()),
     );
     if (!mounted) return;
-    setState(() => _futureOrders = _authService.fetchWorkOrders());
+    _futureOrders = _authService.fetchWorkOrders();
+    setState(() {});
   }
 
   Future<void> _deleteOrder(int id) async {
@@ -1307,22 +1623,28 @@ class _WorkOrdersListPageState extends State<WorkOrdersListPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF0F2F5),
-      appBar: AppBar(
-        title: const Text('ORDEN DE TRABAJO'),
+      appBar: CustomAppBar(
+        title: 'Ordenes de trabajo',
         actions: [
           IconButton(
             tooltip: 'Actualizar',
             onPressed: () {
-              setState(() => _futureOrders = _authService.fetchWorkOrders());
+              _futureOrders = _authService.fetchWorkOrders();
+              setState(() {});
             },
             icon: const Icon(Icons.refresh),
+            color: Colors.white,
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openCreateOrder,
-        icon: const Icon(Icons.add),
-        label: const Text('Nueva orden'),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 40),
+        child: FloatingActionButton.extended(
+          onPressed: _openCreateOrder,
+          icon: const Icon(Icons.add),
+          label: const Text('NUEVA ORDEN'),
+        ),
       ),
       body: Center(
         child: ConstrainedBox(
@@ -1362,7 +1684,34 @@ class _WorkOrdersListPageState extends State<WorkOrdersListPage> {
                       final orders = _applyFilter(allOrders);
                       if (orders.isEmpty) {
                         return const Center(
-                          child: Text('No hay órdenes registradas.'),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.build_outlined,
+                                size: 64,
+                                color: Color(0xFFB0BEC5),
+                              ),
+                              SizedBox(height: 16),
+                              Text(
+                                'No hay órdenes de trabajo',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: Color(0xFF607D8B),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'Crea una nueva orden de trabajo usando el botón +',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF90A4AE),
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
                         );
                       }
 
@@ -1450,6 +1799,249 @@ class _WorkOrdersListPageState extends State<WorkOrdersListPage> {
   }
 }
 
+class MaintenanceOrdersListPage extends StatefulWidget {
+  const MaintenanceOrdersListPage({Key? key}) : super(key: key);
+
+  @override
+  State<MaintenanceOrdersListPage> createState() => _MaintenanceOrdersListPageState();
+}
+
+class _MaintenanceOrdersListPageState extends State<MaintenanceOrdersListPage> {
+  final AuthService _authService = AuthService(AuthService.defaultBaseUrl);
+  final TextEditingController _searchController = TextEditingController();
+  late Future<List<WorkOrder>> _futureOrders;
+
+  @override
+  void initState() {
+    super.initState();
+    _futureOrders = _authService.fetchMaintenanceOrders();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return '-';
+    final d = date.toLocal();
+    return '${d.day.toString().padLeft(2, '0')}/'
+        '${d.month.toString().padLeft(2, '0')}/'
+        '${d.year} '
+        '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+  }
+
+  List<WorkOrder> _applyFilter(List<WorkOrder> orders) {
+    final q = _searchController.text.trim().toLowerCase();
+    if (q.isEmpty) return orders;
+
+    return orders.where((o) {
+      return o.category.toLowerCase().contains(q) ||
+          o.description.toLowerCase().contains(q) ||
+          o.priority.toLowerCase().contains(q) ||
+          o.status.toLowerCase().contains(q);
+    }).toList();
+  }
+
+  Future<void> _openCreateOrder() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const CreateWorkOrderPage()),
+    );
+    if (!mounted) return;
+    _futureOrders = _authService.fetchMaintenanceOrders();
+    setState(() {});
+  }
+
+  Future<void> _deleteOrder(int id) async {
+    final result = await _authService.deleteWorkOrder(id);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(result.message ?? 'Operación finalizada.')),
+    );
+    if (result.success) {
+      setState(() => _futureOrders = _authService.fetchMaintenanceOrders());
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF0F2F5),
+      appBar: CustomAppBar(
+        title: 'Ordenes de mantenimiento',
+        actions: [
+          IconButton(
+            tooltip: 'Actualizar',
+            onPressed: () {
+              _futureOrders = _authService.fetchMaintenanceOrders();
+              setState(() {});
+            },
+            icon: const Icon(Icons.refresh),
+            color: Colors.white,
+          ),
+        ],
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 40),
+        child: FloatingActionButton.extended(
+          onPressed: _openCreateOrder,
+          icon: const Icon(Icons.add),
+          label: const Text('NUEVO MANTENIMIENTO'),
+        ),
+      ),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 980),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                TextField(
+                  controller: _searchController,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    hintText: 'Buscar por categoría, prioridad o detalle...',
+                    prefixIcon: const Icon(Icons.search),
+                    filled: true,
+                    fillColor: const Color(0xFFF2F3F5),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(22),
+                      borderSide: const BorderSide(color: Color(0xFFD2D8DF)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(22),
+                      borderSide: const BorderSide(color: Color(0xFFD2D8DF)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Expanded(
+                  child: FutureBuilder<List<WorkOrder>>(
+                    future: _futureOrders,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      if (snapshot.hasError) {
+                        return Center(
+                          child: Text(
+                            'Error: ${snapshot.error}',
+                            style: const TextStyle(color: Colors.red),
+                          ),
+                        );
+                      }
+                      final orders = snapshot.data ?? [];
+                      final filteredOrders = _applyFilter(orders);
+
+                      if (filteredOrders.isEmpty) {
+                        return const Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.build_outlined,
+                                size: 64,
+                                color: Color(0xFFB0BEC5),
+                              ),
+                              SizedBox(height: 16),
+                              Text(
+                                'No hay órdenes de mantenimiento',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: Color(0xFF607D8B),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'Crea una nueva orden de mantenimiento usando el botón +',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF90A4AE),
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      return ListView.builder(
+                        itemCount: filteredOrders.length,
+                        itemBuilder: (context, index) {
+                          final order = filteredOrders[index];
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: ListTile(
+                                title: Text(
+                                  '#${order.id} • ${order.category}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                subtitle: Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Text(
+                                    '${order.description}\n'
+                                    'Estado: ${order.status} • ${_formatDate(order.createdAt)}',
+                                  ),
+                                ),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 5,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFDCE7F8),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        order.priority,
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFF5679B6),
+                                        ),
+                                      ),
+                                    ),
+                                    IconButton(
+                                      tooltip: 'Eliminar',
+                                      onPressed: () => _deleteOrder(order.id),
+                                      icon: const Icon(
+                                        Icons.delete_outline,
+                                        color: Colors.redAccent,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class CreateWorkOrderPage extends StatefulWidget {
   const CreateWorkOrderPage({Key? key}) : super(key: key);
 
@@ -1461,9 +2053,52 @@ class _CreateWorkOrderPageState extends State<CreateWorkOrderPage> {
   final _formKey = GlobalKey<FormState>();
   final AuthService _authService = AuthService(AuthService.defaultBaseUrl);
   final TextEditingController _descriptionController = TextEditingController();
-  String _category = 'Laptop';
-  String _priority = 'BAJA';
+  String _categoria = '';
+  String _tipo = 'Reparación';
+  String _prioridad = 'BAJA';
   bool _saving = false;
+  int? _codCliente;
+  List<Map<String, dynamic>> _categorias = [];
+  bool _loadingCategorias = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+    _loadCategorias();
+  }
+
+  Future<void> _loadUserData() async {
+    final codCliente = await _authService.getCurrentUserId();
+    if (codCliente != null) {
+      setState(() {
+        _codCliente = codCliente;
+      });
+    }
+  }
+
+  Future<void> _loadCategorias() async {
+    try {
+      final categorias = await _authService.getCategorias();
+      if (mounted) {
+        setState(() {
+          _categorias = categorias;
+          _loadingCategorias = false;
+          // Seleccionar la primera categoría por defecto
+          if (categorias.isNotEmpty) {
+            _categoria = categorias.first['nombre'] ?? '';
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loadingCategorias = false;
+        });
+      }
+      print('Error loading categorías: $e');
+    }
+  }
 
   @override
   void dispose() {
@@ -1475,10 +2110,22 @@ class _CreateWorkOrderPageState extends State<CreateWorkOrderPage> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _saving = true);
+    
+    if (mounted) {
+      print('Creating order with:');
+      print('cod_categoria: $_categoria');
+      print('tipo: $_tipo');
+      print('descripcion_problema: ${_descriptionController.text.trim()}');
+      print('prioridad: $_prioridad');
+      print('cod_cliente: $_codCliente');
+    }
+    
     final result = await _authService.createWorkOrder(
-      category: _category,
-      description: _descriptionController.text.trim(),
-      priority: _priority,
+      categoria: _categoria,
+      tipo: _tipo,
+      descripcion_problema: _descriptionController.text.trim(),
+      prioridad: _prioridad,
+      cod_cliente: _codCliente,
     );
 
     if (!mounted) return;
@@ -1491,9 +2138,21 @@ class _CreateWorkOrderPageState extends State<CreateWorkOrderPage> {
     );
 
     if (result.success) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const WorkOrdersListPage()),
-      );
+      // Redirigir según el tipo de orden creado
+      if (_tipo == 'Reparación') {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const WorkOrdersListPage()),
+        );
+      } else if (_tipo == 'Mantenimiento') {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const MaintenanceOrdersListPage()),
+        );
+      } else {
+        // Por defecto, redirigir a órdenes de trabajo
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const WorkOrdersListPage()),
+        );
+      }
     }
   }
 
@@ -1501,7 +2160,9 @@ class _CreateWorkOrderPageState extends State<CreateWorkOrderPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF0F2F5),
-      appBar: AppBar(title: const Text('Crear orden de trabajo')),
+      appBar: const CustomAppBar(
+        title: 'Crear nuevo ticket',
+      ),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
@@ -1532,7 +2193,7 @@ class _CreateWorkOrderPageState extends State<CreateWorkOrderPage> {
                     ),
                   ),
                   child: const Text(
-                    'NUEVA ORDEN',
+                    'NUEVO TICKET',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white,
@@ -1558,22 +2219,57 @@ class _CreateWorkOrderPageState extends State<CreateWorkOrderPage> {
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: DropdownButtonHideUnderline(
+                            child: _loadingCategorias
+                                ? const Center(
+                                    child: Padding(
+                                      padding: EdgeInsets.all(16.0),
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                  )
+                                : DropdownButton<String>(
+                                    value: _categoria.isEmpty ? null : _categoria,
+                                    isExpanded: true,
+                                    hint: const Text('Selecciona una categoría'),
+                                    items: _categorias.map((categoria) {
+                                      return DropdownMenuItem<String>(
+                                        value: categoria['nombre'] as String,
+                                        child: Text(categoria['nombre'] as String),
+                                      );
+                                    }).toList(),
+                                    onChanged: (value) {
+                                      if (value == null) return;
+                                      setState(() => _categoria = value);
+                                    },
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        const _FieldLabel(text: 'TIPO'),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF0F1F3),
+                            border: Border.all(color: const Color(0xFFC4CAD1)),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: DropdownButtonHideUnderline(
                             child: DropdownButton<String>(
-                              value: _category,
+                              value: _tipo,
                               isExpanded: true,
                               items: const [
                                 DropdownMenuItem(
-                                  value: 'Laptop',
-                                  child: Text('Laptop'),
+                                  value: 'Reparación',
+                                  child: Text('Reparación'),
                                 ),
                                 DropdownMenuItem(
-                                  value: 'pc escritorio',
-                                  child: Text('pc escritorio'),
+                                  value: 'Mantenimiento',
+                                  child: Text('Mantenimiento'),
                                 ),
                               ],
                               onChanged: (value) {
                                 if (value == null) return;
-                                setState(() => _category = value);
+                                setState(() => _tipo = value);
                               },
                             ),
                           ),
@@ -1616,21 +2312,21 @@ class _CreateWorkOrderPageState extends State<CreateWorkOrderPage> {
                           children: [
                             _PriorityChip(
                               label: 'BAJA',
-                              selected: _priority == 'BAJA',
+                              selected: _prioridad == 'BAJA',
                               selectedColor: const Color(0xFF9FD8A0),
-                              onTap: () => setState(() => _priority = 'BAJA'),
+                              onTap: () => setState(() => _prioridad = 'BAJA'),
                             ),
                             _PriorityChip(
                               label: 'MEDIA',
-                              selected: _priority == 'MEDIA',
+                              selected: _prioridad == 'MEDIA',
                               selectedColor: const Color(0xFFE5D388),
-                              onTap: () => setState(() => _priority = 'MEDIA'),
+                              onTap: () => setState(() => _prioridad = 'MEDIA'),
                             ),
                             _PriorityChip(
                               label: 'ALTA',
-                              selected: _priority == 'ALTA',
+                              selected: _prioridad == 'ALTA',
                               selectedColor: const Color(0xFFE7A4A4),
-                              onTap: () => setState(() => _priority = 'ALTA'),
+                              onTap: () => setState(() => _prioridad = 'ALTA'),
                             ),
                           ],
                         ),
@@ -1725,7 +2421,7 @@ class AuthorsOverlay extends StatefulWidget {
 }
 
 class _AuthorsOverlayState extends State<AuthorsOverlay> {
-  String _names = 'Autores: Nombre1, Nombre2';
+  String _names = 'Desarrollado por...';
 
   void _editNames() async {
     final controller = TextEditingController(text: _names);
