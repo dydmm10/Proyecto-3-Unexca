@@ -104,12 +104,8 @@ async function ensureSchema() {
   // Insertar categorías iniciales si no existen
   await pool.query(`
     INSERT IGNORE INTO categoria (cod_categoria, nombre, descripcion) VALUES
-    (1, 'Hardware', 'Problemas con componentes físicos del equipo'),
-    (2, 'Software', 'Problemas con programas y aplicaciones'),
-    (3, 'Red', 'Problemas de conectividad y red'),
-    (4, 'Mantenimiento', 'Mantenimiento preventivo y correctivo'),
-    (5, 'Instalación', 'Instalación de software y configuración'),
-    (6, 'Soporte', 'Consultas y ayuda técnica general')
+    (1, 'Laptop', 'Computadoras portátiles y notebooks'),
+    (2, 'PC Escritorio', 'Computadoras de escritorio y torres')
   `);
 
   // Verificar si existe la columna tipo en ordenes_reclamos
@@ -491,6 +487,22 @@ app.post('/api/ordenes-reclamos', verifyToken, async (req, res) => {
   }
 
   try {
+    // Buscar el cod_categoria a partir del nombre de la categoría
+    console.log('🔍 Buscando categoría:', categoria);
+    const [categoriaRows] = await pool.query(
+      'SELECT cod_categoria FROM categoria WHERE nombre = ?',
+      [categoria]
+    );
+
+    if (categoriaRows.length === 0) {
+      return res.status(400).json({ 
+        msg: `La categoría "${categoria}" no existe en el sistema` 
+      });
+    }
+
+    const cod_categoria = categoriaRows[0].cod_categoria;
+    console.log('✅ Categoría encontrada:', { nombre: categoria, cod_categoria });
+
     // Insertar solo los campos requeridos, los demás campos mantendrán sus valores por defecto (NULL)
     const query = `
       INSERT INTO ordenes_reclamos (
@@ -503,7 +515,7 @@ app.post('/api/ordenes-reclamos', verifyToken, async (req, res) => {
     `;
     
     const params = [
-      categoria,                    // cod_categoria (VARCHAR)
+      cod_categoria,               // cod_categoria (INT)
       tipo,                         // tipo (VARCHAR)
       descripcion_problema,         // descripcion_problema (TEXT)
       prioridad,                    // prioridad (VARCHAR)
@@ -511,7 +523,8 @@ app.post('/api/ordenes-reclamos', verifyToken, async (req, res) => {
     ];
     
     console.log('📝 Insertando orden con:', {
-      cod_categoria: categoria,
+      cod_categoria: cod_categoria,
+      categoria: categoria,
       tipo: tipo,
       descripcion_problema: descripcion_problema,
       prioridad: prioridad,
@@ -527,7 +540,8 @@ app.post('/api/ordenes-reclamos', verifyToken, async (req, res) => {
       msg: 'Orden creada exitosamente',
       datos: {
         cod_orden: result.insertId,
-        cod_categoria: categoria,
+        cod_categoria: cod_categoria,
+        categoria: categoria,
         tipo: tipo,
         descripcion_problema: descripcion_problema,
         prioridad: prioridad,
@@ -542,14 +556,45 @@ app.post('/api/ordenes-reclamos', verifyToken, async (req, res) => {
   }
 });
 
-// Endpoint para obtener órdenes de trabajo de clientes (tipo Reparación) - temporal sin autenticación
-app.get('/api/ordenes-trabajo/cliente', async (req, res) => {
+// Endpoint para obtener órdenes de trabajo de clientes (categoría Reparación)
+app.get('/api/ordenes-trabajo/cliente', verifyToken, async (req, res) => {
   try {
-    console.log('📋 Obteniendo órdenes de trabajo para clientes...');
+    console.log('📋 Obteniendo órdenes de trabajo para cliente:', req.user);
+    
+    // Obtener cod_cliente del usuario autenticado
+    const codCliente = req.user.cod_cliente || req.user.id;
+    
+    if (!codCliente) {
+      console.log('❌ No se encontró cod_cliente en el token');
+      return res.status(400).json({ msg: 'No se encontró cod_cliente en el token' });
+    }
+    
+    console.log(`🔍 Buscando órdenes para cliente ${codCliente}`);
+    
     const [rows] = await pool.query(
-      `SELECT * FROM ordenes_reclamos WHERE tipo = 'Reparación' ORDER BY fecha_creacion DESC`
+      `SELECT 
+        cod_orden as id,
+        cod_categoria as category,
+        descripcion_problema as description,
+        prioridad as priority,
+        estado as status,
+        fecha_creacion as created_at,
+        cod_cliente,
+        cod_equipo,
+        diagnostico,
+        costo_estimado,
+        costo_final,
+        cod_tecnico,
+        fecha_modificacion,
+        correcciones,
+        recomendaciones
+       FROM ordenes_reclamos 
+       WHERE tipo = 'Reparacion' AND cod_cliente = ?
+       ORDER BY fecha_creacion DESC`,
+      [codCliente]
     );
-    console.log(`✅ Órdenes de trabajo encontradas: ${rows.length}`);
+    
+    console.log(`✅ Órdenes de trabajo encontradas para cliente ${codCliente}: ${rows.length}`);
     return res.json(rows);
   } catch (e) {
     console.error('Get ordenes trabajo cliente error:', e.message);
@@ -557,14 +602,45 @@ app.get('/api/ordenes-trabajo/cliente', async (req, res) => {
   }
 });
 
-// Endpoint para obtener órdenes de mantenimiento de clientes (tipo Mantenimiento) - temporal sin autenticación
-app.get('/api/ordenes-mantenimiento/cliente', async (req, res) => {
+// Endpoint para obtener órdenes de mantenimiento de clientes (categoría Mantenimiento)
+app.get('/api/ordenes-mantenimiento/cliente', verifyToken, async (req, res) => {
   try {
-    console.log('📋 Obteniendo órdenes de mantenimiento para clientes...');
+    console.log('📋 Obteniendo órdenes de mantenimiento para cliente:', req.user);
+    
+    // Obtener cod_cliente del usuario autenticado
+    const codCliente = req.user.cod_cliente || req.user.id;
+    
+    if (!codCliente) {
+      console.log('❌ No se encontró cod_cliente en el token');
+      return res.status(400).json({ msg: 'No se encontró cod_cliente en el token' });
+    }
+    
+    console.log(`🔍 Buscando órdenes de mantenimiento para cliente ${codCliente}`);
+    
     const [rows] = await pool.query(
-      `SELECT * FROM ordenes_reclamos WHERE tipo = 'Mantenimiento' ORDER BY fecha_creacion DESC`
+      `SELECT 
+        cod_orden as id,
+        cod_categoria as category,
+        descripcion_problema as description,
+        prioridad as priority,
+        estado as status,
+        fecha_creacion as created_at,
+        cod_cliente,
+        cod_equipo,
+        diagnostico,
+        costo_estimado,
+        costo_final,
+        cod_tecnico,
+        fecha_modificacion,
+        correcciones,
+        recomendaciones
+       FROM ordenes_reclamos 
+       WHERE tipo = 'Mantenimiento' AND cod_cliente = ?
+       ORDER BY fecha_creacion DESC`,
+      [codCliente]
     );
-    console.log(`✅ Órdenes de mantenimiento encontradas: ${rows.length}`);
+    
+    console.log(`✅ Órdenes de mantenimiento encontradas para cliente ${codCliente}: ${rows.length}`);
     return res.json(rows);
   } catch (e) {
     console.error('Get ordenes mantenimiento cliente error:', e.message);
@@ -572,11 +648,16 @@ app.get('/api/ordenes-mantenimiento/cliente', async (req, res) => {
   }
 });
 
-// Endpoint para obtener órdenes de trabajo (tipo Reparación)
+// Endpoint para obtener órdenes de trabajo (categoría Reparación)
 app.get('/api/ordenes-trabajo', async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT * FROM ordenes_reclamos WHERE tipo = 'Reparación' ORDER BY fecha_creacion DESC`
+      `SELECT cod_orden as id, cod_categoria as category, descripcion_problema as description, prioridad as priority,
+              estado as status, fecha_creacion as created_at, cod_cliente, cod_equipo, diagnostico, costo_estimado, costo_final,
+              cod_tecnico, fecha_modificacion, correcciones, recomendaciones
+       FROM ordenes_reclamos 
+       WHERE tipo = 'Reparacion' 
+       ORDER BY fecha_creacion DESC`
     );
     return res.json(rows);
   } catch (e) {
@@ -585,11 +666,16 @@ app.get('/api/ordenes-trabajo', async (req, res) => {
   }
 });
 
-// Endpoint para obtener órdenes de mantenimiento (tipo Mantenimiento)
+// Endpoint para obtener órdenes de mantenimiento (categoría Mantenimiento)
 app.get('/api/ordenes-mantenimiento', async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT * FROM ordenes_reclamos WHERE tipo = 'Mantenimiento' ORDER BY fecha_creacion DESC`
+      `SELECT cod_orden as id, cod_categoria as category, descripcion_problema as description, prioridad as priority,
+              estado as status, fecha_creacion as created_at, cod_cliente, cod_equipo, diagnostico, costo_estimado, costo_final,
+              cod_tecnico, fecha_modificacion, correcciones, recomendaciones
+       FROM ordenes_reclamos 
+       WHERE tipo = 'Mantenimiento' 
+       ORDER BY fecha_creacion DESC`
     );
     return res.json(rows);
   } catch (e) {
@@ -614,6 +700,47 @@ app.get('/api/ordenes-reclamos', async (req, res) => {
   }
 });
 
+app.get('/api/ordenes-reclamos/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ msg: 'Id inválido' });
+  }
+
+  try {
+    const [rows] = await pool.query(
+      `SELECT 
+        o.cod_orden as id,
+        c.nombre as category,
+        o.descripcion_problema as description,
+        o.prioridad as priority,
+        o.estado as status,
+        o.fecha_creacion as created_at,
+        o.fecha_modificacion as modified_at,
+        o.costo_estimado,
+        o.costo_final,
+        o.diagnostico,
+        o.correcciones,
+        o.recomendaciones,
+        o.cod_tecnico,
+        t.nombre as tecnico_nombre
+       FROM ordenes_reclamos o
+       LEFT JOIN categoria c ON o.cod_categoria = c.cod_categoria
+       LEFT JOIN tecnicos t ON o.cod_tecnico = t.cod_tecnico
+       WHERE o.cod_orden = ?`,
+      [id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ msg: 'Orden no encontrada' });
+    }
+
+    return res.json(rows[0]);
+  } catch (e) {
+    console.error('Get orden detalle error:', e.message);
+    return res.status(500).json({ msg: 'No se pudo obtener los detalles de la orden' });
+  }
+});
+
 app.delete('/api/ordenes-reclamos/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
@@ -629,6 +756,186 @@ app.delete('/api/ordenes-reclamos/:id', async (req, res) => {
   } catch (e) {
     console.error('Delete orden-reclamo error:', e.message);
     return res.status(500).json({ msg: 'No se pudo eliminar la orden' });
+  }
+});
+
+// Endpoint para actualizar una orden de trabajo
+app.put('/api/ordenes-reclamos/:id', verifyToken, async (req, res) => {
+  const orderId = Number(req.params.id);
+  
+  if (!orderId || isNaN(orderId)) {
+    return res.status(400).json({ msg: 'ID de orden inválido' });
+  }
+
+  const {
+    cod_categoria,
+    descripcion_problema,
+    prioridad,
+    estado,
+    diagnostico,
+    correcciones,
+    recomendaciones,
+    costo_estimado,
+    costo_final,
+    cod_cliente,
+    cod_equipo,
+    cod_tecnico
+  } = req.body;
+
+  // Validar campos requeridos
+  if (!cod_categoria || !descripcion_problema || !prioridad || !estado) {
+    return res.status(400).json({ msg: 'Faltan campos requeridos: cod_categoria, descripcion_problema, prioridad, estado' });
+  }
+
+  // Validar prioridad
+  if (!['BAJA', 'MEDIA', 'ALTA'].includes(prioridad)) {
+    return res.status(400).json({ msg: 'Prioridad inválida' });
+  }
+
+  try {
+    // Verificar que la orden exista
+    const [orderExists] = await pool.query(
+      'SELECT cod_orden FROM ordenes_reclamos WHERE cod_orden = ?', 
+      [orderId]
+    );
+    
+    if (orderExists.length === 0) {
+      return res.status(404).json({ msg: 'Orden no encontrada' });
+    }
+
+    // Verificar que la categoría exista
+    const [categoriaExists] = await pool.query(
+      'SELECT cod_categoria FROM categoria WHERE cod_categoria = ?', 
+      [cod_categoria]
+    );
+    
+    if (categoriaExists.length === 0) {
+      return res.status(400).json({ msg: 'Categoría no válida' });
+    }
+
+    // Verificar que el cliente exista si se proporciona
+    if (cod_cliente) {
+      const [clienteExists] = await pool.query(
+        'SELECT cod_cliente FROM clientes WHERE cod_cliente = ?', 
+        [cod_cliente]
+      );
+      if (clienteExists.length === 0) {
+        return res.status(400).json({ msg: 'Cliente no encontrado' });
+      }
+    }
+
+    // Verificar que el equipo exista si se proporciona
+    if (cod_equipo) {
+      const [equipoExists] = await pool.query(
+        'SELECT cod_equipos FROM equipos WHERE cod_equipos = ?', 
+        [cod_equipo]
+      );
+      if (equipoExists.length === 0) {
+        return res.status(400).json({ msg: 'Equipo no encontrado' });
+      }
+    }
+
+    // Verificar que el técnico exista si se proporciona
+    if (cod_tecnico) {
+      const [tecnicoExists] = await pool.query(
+        'SELECT cod_tecnico FROM tecnicos WHERE cod_tecnico = ?', 
+        [cod_tecnico]
+      );
+      if (tecnicoExists.length === 0) {
+        return res.status(400).json({ msg: 'Técnico no encontrado' });
+      }
+    }
+
+    // Construir la consulta de actualización
+    const updateFields = [
+      'cod_categoria = ?',
+      'descripcion_problema = ?',
+      'prioridad = ?',
+      'estado = ?',
+      'fecha_modificacion = CURRENT_TIMESTAMP'
+    ];
+    
+    const updateValues = [
+      cod_categoria,
+      descripcion_problema,
+      prioridad,
+      estado
+    ];
+
+    // Agregar campos opcionales
+    if (diagnostico !== undefined && diagnostico !== null) {
+      updateFields.push('diagnostico = ?');
+      updateValues.push(diagnostico);
+    }
+    
+    if (correcciones !== undefined && correcciones !== null) {
+      updateFields.push('correcciones = ?');
+      updateValues.push(correcciones);
+    }
+    
+    if (recomendaciones !== undefined && recomendaciones !== null) {
+      updateFields.push('recomendaciones = ?');
+      updateValues.push(recomendaciones);
+    }
+    
+    if (costo_estimado !== undefined && costo_estimado !== null) {
+      updateFields.push('costo_estimado = ?');
+      updateValues.push(costo_estimado);
+    }
+    
+    if (costo_final !== undefined && costo_final !== null) {
+      updateFields.push('costo_final = ?');
+      updateValues.push(costo_final);
+    }
+    
+    if (cod_cliente !== undefined && cod_cliente !== null) {
+      updateFields.push('cod_cliente = ?');
+      updateValues.push(cod_cliente);
+    }
+    
+    if (cod_equipo !== undefined && cod_equipo !== null) {
+      updateFields.push('cod_equipo = ?');
+      updateValues.push(cod_equipo);
+    }
+    
+    if (cod_tecnico !== undefined && cod_tecnico !== null) {
+      updateFields.push('cod_tecnico = ?');
+      updateValues.push(cod_tecnico);
+    }
+
+    // Agregar el ID al final de los valores
+    updateValues.push(orderId);
+
+    // Ejecutar la actualización
+    const query = `
+      UPDATE ordenes_reclamos 
+      SET ${updateFields.join(', ')} 
+      WHERE cod_orden = ?
+    `;
+
+    console.log('📝 Actualizando orden:', {
+      orderId,
+      fields: updateFields,
+      values: updateValues
+    });
+
+    const [result] = await pool.query(query, updateValues);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ msg: 'No se pudo actualizar la orden' });
+    }
+
+    console.log('✅ Orden actualizada exitosamente:', orderId);
+
+    return res.json({ 
+      msg: 'Orden actualizada exitosamente',
+      cod_orden: orderId,
+      fecha_modificacion: new Date()
+    });
+
+  } catch (e) {
+    console.error('Update orden-reclamo error:', e.message);
+    return res.status(500).json({ msg: 'No se pudo actualizar la orden' });
   }
 });
 
@@ -1984,12 +2291,36 @@ app.get('/api/categorias', async (req, res) => {
   }
 });
 
+// Endpoint para eliminar categorías específicas por código
+app.delete('/api/categorias/:cod_categoria', async (req, res) => {
+  try {
+    const cod_categoria = Number(req.params.cod_categoria);
+    
+    if (!Number.isInteger(cod_categoria) || cod_categoria <= 0) {
+      return res.status(400).json({ msg: 'Código de categoría inválido' });
+    }
+
+    const [result] = await pool.query(
+      'DELETE FROM categoria WHERE cod_categoria = ?',
+      [cod_categoria]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ msg: 'Categoría no encontrada' });
+    }
+
+    return res.json({ msg: 'Categoría eliminada correctamente' });
+  } catch (e) {
+    console.error('Delete categoria error:', e.message);
+    return res.status(500).json({ msg: 'No se pudo eliminar la categoría' });
+  }
+});
+
 // Endpoint para eliminar categorías específicas por nombre
 app.delete('/api/categorias/nombre/:nombre', async (req, res) => {
   try {
     const { nombre } = req.params;
-    console.log(`🗑️ Eliminando categoría: ${nombre}`);
-    
+
     const [result] = await pool.query(
       'DELETE FROM categoria WHERE nombre = ?',
       [nombre]
