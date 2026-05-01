@@ -589,7 +589,7 @@ app.get('/api/ordenes-trabajo/cliente', verifyToken, async (req, res) => {
         correcciones,
         recomendaciones
        FROM ordenes_reclamos 
-       WHERE tipo = 'Reparacion' AND cod_cliente = ?
+       WHERE tipo = 'Reparación' AND cod_cliente = ?
        ORDER BY fecha_creacion DESC`,
       [codCliente]
     );
@@ -656,7 +656,7 @@ app.get('/api/ordenes-trabajo', async (req, res) => {
               estado as status, fecha_creacion as created_at, cod_cliente, cod_equipo, diagnostico, costo_estimado, costo_final,
               cod_tecnico, fecha_modificacion, correcciones, recomendaciones
        FROM ordenes_reclamos 
-       WHERE tipo = 'Reparacion' 
+       WHERE tipo = 'Reparación' 
        ORDER BY fecha_creacion DESC`
     );
     return res.json(rows);

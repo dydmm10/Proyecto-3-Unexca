@@ -324,9 +324,15 @@ class WorkOrderDetail {
 
       modifiedAt: rawModifiedAt is String ? DateTime.tryParse(rawModifiedAt) : null,
 
-      costoEstimado: json['costo_estimado'] != null ? (json['costo_estimado'] as num).toDouble() : null,
+      costoEstimado: json['costo_estimado'] != null ? 
+        (json['costo_estimado'] is String ? 
+          double.tryParse(json['costo_estimado'] as String) : 
+          (json['costo_estimado'] as num).toDouble()) : null,
 
-      costoFinal: json['costo_final'] != null ? (json['costo_final'] as num).toDouble() : null,
+      costoFinal: json['costo_final'] != null ? 
+        (json['costo_final'] is String ? 
+          double.tryParse(json['costo_final'] as String) : 
+          (json['costo_final'] as num).toDouble()) : null,
 
       diagnostico: json['diagnostico'] as String?,
 
