@@ -264,14 +264,21 @@ app.patch('/api/tecnicos/:usuario/estado', async (req, res) => {
       });
     }
     
-    // Verificar si el técnico existe
+    // Verificar si el técnico existe y obtener su privilegio
     const [existing] = await pool.query(
-      'SELECT usuario FROM tecnicos WHERE usuario = ?',
+      'SELECT cod_privilegio FROM tecnicos WHERE usuario = ?',
       [usuario]
     );
     
     if (existing.length === 0) {
       return res.status(404).json({ message: 'Técnico no encontrado' });
+    }
+    
+    // Verificar si es un Master y no se puede inactivar
+    if (existing[0].cod_privilegio === '99') {
+      return res.status(403).json({ 
+        message: 'No se puede cambiar el estado del usuario Master. Esta cuenta está protegida.' 
+      });
     }
     
     // Actualizar estado del técnico
@@ -366,14 +373,21 @@ app.patch('/api/tecnicos/:usuario/privilegio', async (req, res) => {
       });
     }
     
-    // Verificar si el técnico existe
+    // Verificar si el técnico existe y obtener su privilegio actual
     const [existing] = await pool.query(
-      'SELECT usuario FROM tecnicos WHERE usuario = ?',
+      'SELECT cod_privilegio FROM tecnicos WHERE usuario = ?',
       [usuario]
     );
     
     if (existing.length === 0) {
       return res.status(404).json({ message: 'Técnico no encontrado' });
+    }
+    
+    // Verificar si es un Master y no se puede cambiar su privilegio
+    if (existing[0].cod_privilegio === '99') {
+      return res.status(403).json({ 
+        message: 'No se puede cambiar el privilegio del usuario Master. Esta cuenta está protegida.' 
+      });
     }
     
     // Actualizar privilegio del técnico
