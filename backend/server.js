@@ -144,14 +144,27 @@ app.post('/api/login', async (req, res) => {
 // Endpoint para órdenes de trabajo
 app.get('/api/ordenes-trabajo', async (req, res) => {
   try {
-    const [rows] = await pool.query(`
+    const { cod_cliente } = req.query;
+    
+    let query = `
       SELECT o.*, c.nombre AS cliente_nombre, cat.nombre AS category_name
       FROM ordenes_reclamos o
       LEFT JOIN clientes c ON o.cod_cliente = c.cod_cliente
       LEFT JOIN categoria cat ON o.cod_categoria = cat.cod_categoria
       WHERE o.tipo = 'Reparación'
-      ORDER BY o.fecha_creacion DESC
-    `);
+    `;
+    
+    const params = [];
+    
+    // Si se especifica cod_cliente, filtrar por ese cliente
+    if (cod_cliente) {
+      query += ' AND o.cod_cliente = ?';
+      params.push(cod_cliente);
+    }
+    
+    query += ' ORDER BY o.fecha_creacion DESC';
+    
+    const [rows] = await pool.query(query, params);
     
     res.json(rows);
   } catch (error) {
