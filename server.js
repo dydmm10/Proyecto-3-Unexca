@@ -225,14 +225,55 @@ app.get('/api/tecnicos', async (req, res) => {
       SELECT t.*, p.rol 
       FROM tecnicos t
       LEFT JOIN privilegios p ON t.cod_privilegio = p.cod_privilegio
-      WHERE t.estado = 'Activo'
-      ORDER BY t.fecha_creacion DESC
+      ORDER BY t.estado DESC, t.fecha_creacion DESC
     `);
     
     res.json(rows);
   } catch (error) {
     console.error('Error obteniendo técnicos:', error);
     res.status(500).json({ msg: 'Error obteniendo técnicos' });
+  }
+});
+
+// Endpoint para inactivar/activar técnico
+app.patch('/api/tecnicos/:usuario/estado', async (req, res) => {
+  try {
+    const { usuario } = req.params;
+    const { estado } = req.body;
+    
+    // Validar que el estado sea válido
+    if (!['Activo', 'Inactivo'].includes(estado)) {
+      return res.status(400).json({ 
+        msg: 'Estado no válido. Debe ser "Activo" o "Inactivo"' 
+      });
+    }
+    
+    // Verificar si el técnico existe
+    const [existing] = await pool.query(
+      'SELECT usuario FROM tecnicos WHERE usuario = ?',
+      [usuario]
+    );
+    
+    if (existing.length === 0) {
+      return res.status(404).json({ message: 'Técnico no encontrado' });
+    }
+    
+    // Actualizar estado del técnico
+    await pool.query(
+      'UPDATE tecnicos SET estado = ? WHERE usuario = ?',
+      [estado, usuario]
+    );
+    
+    res.json({ 
+      message: `Técnico ${estado === 'Activo' ? 'activado' : 'inactivado'} exitosamente`,
+      estado: estado
+    });
+  } catch (error) {
+    console.error('Error actualizando estado de técnico:', error);
+    res.status(500).json({ 
+      msg: 'Error actualizando estado de técnico',
+      error: error.message 
+    });
   }
 });
 
