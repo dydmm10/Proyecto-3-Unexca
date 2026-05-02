@@ -213,6 +213,74 @@ app.get('/api/ordenes-reclamos/:id', async (req, res) => {
   }
 });
 
+// Endpoint para obtener técnicos
+app.get('/api/tecnicos', async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT t.*, p.rol 
+      FROM tecnicos t
+      LEFT JOIN privilegios p ON t.cod_privilegio = p.cod_privilegio
+      WHERE t.estado = 'Activo'
+      ORDER BY t.fecha_creacion DESC
+    `);
+    
+    res.json(rows);
+  } catch (error) {
+    console.error('Error obteniendo técnicos:', error);
+    res.status(500).json({ msg: 'Error obteniendo técnicos' });
+  }
+});
+
+// Endpoint para obtener clientes
+app.get('/api/clientes', async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT c.*, p.rol 
+      FROM clientes c
+      LEFT JOIN privilegios p ON c.cod_privilegio = p.cod_privilegio
+      WHERE c.estado = 'Activo'
+      ORDER BY c.fecha_creacion DESC
+    `);
+    
+    res.json(rows);
+  } catch (error) {
+    console.error('Error obteniendo clientes:', error);
+    res.status(500).json({ msg: 'Error obteniendo clientes' });
+  }
+});
+
+// Endpoint para obtener equipos
+app.get('/api/equipos', async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT e.*, c.nombre as cliente_nombre
+      FROM equipos e
+      LEFT JOIN clientes c ON e.cod_cliente = c.cod_cliente
+      ORDER BY e.cod_equipos DESC
+    `);
+    
+    res.json(rows);
+  } catch (error) {
+    console.error('Error obteniendo equipos:', error);
+    res.status(500).json({ msg: 'Error obteniendo equipos' });
+  }
+});
+
+// Endpoint para obtener categorías
+app.get('/api/categorias', async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT * FROM categoria
+      ORDER BY cod_categoria ASC
+    `);
+    
+    res.json(rows);
+  } catch (error) {
+    console.error('Error obteniendo categorías:', error);
+    res.status(500).json({ msg: 'Error obteniendo categorías' });
+  }
+});
+
 // Endpoint para importar base de datos
 app.post('/api/import-database', async (req, res) => {
   try {
