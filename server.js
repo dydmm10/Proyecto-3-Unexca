@@ -384,6 +384,109 @@ app.post('/api/equipos', async (req, res) => {
   }
 });
 
+// Endpoint para actualizar orden de trabajo
+app.patch('/api/ordenes-reclamos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      estado,
+      prioridad,
+      descripcion_problema,
+      diagnostico,
+      correcciones,
+      recomendaciones,
+      costo_estimado,
+      costo_final,
+      cod_equipo,
+      cod_tecnico
+    } = req.body;
+    
+    // Verificar si la orden existe
+    const [existing] = await pool.query(
+      'SELECT cod_orden FROM ordenes_reclamos WHERE cod_orden = ?',
+      [id]
+    );
+    
+    if (existing.length === 0) {
+      return res.status(404).json({ message: 'Orden de trabajo no encontrada' });
+    }
+    
+    // Construir query dinámica para actualizar solo los campos proporcionados
+    const updateFields = [];
+    const updateValues = [];
+    
+    if (estado !== undefined) {
+      updateFields.push('estado = ?');
+      updateValues.push(estado);
+    }
+    if (prioridad !== undefined) {
+      updateFields.push('prioridad = ?');
+      updateValues.push(prioridad);
+    }
+    if (descripcion_problema !== undefined) {
+      updateFields.push('descripcion_problema = ?');
+      updateValues.push(descripcion_problema);
+    }
+    if (diagnostico !== undefined) {
+      updateFields.push('diagnostico = ?');
+      updateValues.push(diagnostico);
+    }
+    if (correcciones !== undefined) {
+      updateFields.push('correcciones = ?');
+      updateValues.push(correcciones);
+    }
+    if (recomendaciones !== undefined) {
+      updateFields.push('recomendaciones = ?');
+      updateValues.push(recomendaciones);
+    }
+    if (costo_estimado !== undefined) {
+      updateFields.push('costo_estimado = ?');
+      updateValues.push(costo_estimado);
+    }
+    if (costo_final !== undefined) {
+      updateFields.push('costo_final = ?');
+      updateValues.push(costo_final);
+    }
+    if (cod_equipo !== undefined) {
+      updateFields.push('cod_equipo = ?');
+      updateValues.push(cod_equipo);
+    }
+    if (cod_tecnico !== undefined) {
+      updateFields.push('cod_tecnico = ?');
+      updateValues.push(cod_tecnico);
+    }
+    
+    if (updateFields.length === 0) {
+      return res.status(400).json({ 
+        msg: 'No se proporcionaron campos para actualizar' 
+      });
+    }
+    
+    // Agregar fecha de modificación
+    updateFields.push('fecha_modificacion = CURRENT_TIMESTAMP');
+    updateValues.push(id); // Para el WHERE
+    
+    const updateQuery = `
+      UPDATE ordenes_reclamos 
+      SET ${updateFields.join(', ')}
+      WHERE cod_orden = ?
+    `;
+    
+    await pool.query(updateQuery, updateValues);
+    
+    res.json({ 
+      message: 'Orden de trabajo actualizada exitosamente',
+      updated_fields: updateFields.length - 1 // Excluir fecha_modificación
+    });
+  } catch (error) {
+    console.error('Error actualizando orden de trabajo:', error);
+    res.status(500).json({ 
+      msg: 'Error actualizando orden de trabajo',
+      error: error.message 
+    });
+  }
+});
+
 // Endpoint para obtener categorías
 app.get('/api/categorias', async (req, res) => {
   try {
