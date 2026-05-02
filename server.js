@@ -254,6 +254,48 @@ app.get('/api/clientes', async (req, res) => {
   }
 });
 
+// Endpoint para inactivar/activar cliente
+app.patch('/api/clientes/:id/estado', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { estado } = req.body;
+    
+    // Validar que el estado sea válido
+    if (!['Activo', 'Inactivo'].includes(estado)) {
+      return res.status(400).json({ 
+        msg: 'Estado no válido. Debe ser "Activo" o "Inactivo"' 
+      });
+    }
+    
+    // Verificar si el cliente existe
+    const [existing] = await pool.query(
+      'SELECT cod_cliente FROM clientes WHERE cod_cliente = ?',
+      [id]
+    );
+    
+    if (existing.length === 0) {
+      return res.status(404).json({ message: 'Cliente no encontrado' });
+    }
+    
+    // Actualizar estado del cliente
+    await pool.query(
+      'UPDATE clientes SET estado = ? WHERE cod_cliente = ?',
+      [estado, id]
+    );
+    
+    res.json({ 
+      message: `Cliente ${estado === 'Activo' ? 'activado' : 'inactivado'} exitosamente`,
+      estado: estado
+    });
+  } catch (error) {
+    console.error('Error actualizando estado de cliente:', error);
+    res.status(500).json({ 
+      msg: 'Error actualizando estado de cliente',
+      error: error.message 
+    });
+  }
+});
+
 // Endpoint para obtener equipos
 app.get('/api/equipos', async (req, res) => {
   try {
