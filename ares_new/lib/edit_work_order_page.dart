@@ -74,7 +74,31 @@ class _EditWorkOrderPageState extends State<EditWorkOrderPage> {
     _fechaCreacionController = TextEditingController(text: _formatDate(widget.workOrder.createdAt));
     _fechaModificacionController = TextEditingController(text: widget.workOrder.fechaModificacion != null ? _formatDate(widget.workOrder.fechaModificacion!) : '');
     
-    _selectedEstado = widget.workOrder.status;
+    _selectedEstado = _normalizeStatus(widget.workOrder.status);
+  }
+
+  // Método para normalizar el estado y asegurar que coincida con las opciones
+  String _normalizeStatus(String status) {
+    switch (status.toUpperCase()) {
+      case 'ABIERTO':
+        return 'ABIERTO';
+      case 'ASIGNADO':
+        return 'ASIGNADO';
+      case 'EN DIAGNOSTICO':
+      case 'EN DIAGNÓSTICO':
+        return 'EN DIAGNOSTICO';
+      case 'EN REPARACIÓN':
+      case 'EN REPARACION':
+        return 'EN REPARACIÓN';
+      case 'LISTO':
+        return 'LISTO';
+      case 'ENTREGADO':
+        return 'ENTREGADO';
+      case 'CANCELADO':
+        return 'CANCELADO';
+      default:
+        return 'ABIERTO'; // Valor por defecto
+    }
   }
 
   Future<void> _loadCurrentUser() async {
@@ -295,7 +319,7 @@ class _EditWorkOrderPageState extends State<EditWorkOrderPage> {
             
             // Estado del caso
             DropdownButtonFormField<String>(
-              initialValue: _selectedEstado,
+              value: _statusOptions.contains(_selectedEstado) ? _selectedEstado : null,
               decoration: const InputDecoration(
                 labelText: 'Estado del caso',
                 border: OutlineInputBorder(),

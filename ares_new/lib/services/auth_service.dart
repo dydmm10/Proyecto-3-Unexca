@@ -108,9 +108,9 @@ class WorkOrder {
 
   factory WorkOrder.fromJson(Map<String, dynamic> json) {
 
-    final rawCreatedAt = json['created_at'];
+    final rawCreatedAt = json['fecha_creacion'];
 
-    final categoryValue = json['category'];
+    final categoryValue = json['category_name'] ?? json['cod_categoria'];
 
     String categoryStr = '';
 
@@ -136,25 +136,25 @@ class WorkOrder {
 
     return WorkOrder(
 
-      id: (json['id'] as num?)?.toInt() ?? 0,
+      id: (json['cod_orden'] as num?)?.toInt() ?? 0,
 
       category: categoryStr,
 
-      description: (json['description'] as String? ?? '').trim(),
+      description: (json['descripcion_problema'] as String? ?? '').trim(),
 
-      priority: (json['priority'] as String? ?? '').trim(),
+      priority: (json['prioridad'] as String? ?? '').trim(),
 
-      status: (json['status'] as String? ?? '').trim(),
+      status: (json['estado'] as String? ?? '').trim(),
 
-      createdAt:
+      createdAt: rawCreatedAt is String ? DateTime.tryParse(rawCreatedAt) : null,
 
-          rawCreatedAt is String ? DateTime.tryParse(rawCreatedAt) : null,
+      fechaModificacion: json['fecha_modificacion'] is String ? DateTime.tryParse(json['fecha_modificacion']) : null,
 
-      nombreCliente: json['nombreCliente'] as String? ?? null,
+      nombreCliente: json['cliente_nombre'] as String? ?? null,
 
-      usuarioCliente: json['usuarioCliente'] as String? ?? null,
+      usuarioCliente: null, // No viene en el backend
 
-      nombreEquipo: json['nombreEquipo'] as String? ?? null,
+      nombreEquipo: null, // No viene directamente en este endpoint
 
       codCliente: (json['cod_cliente'] as num?)?.toInt(),
 
@@ -167,10 +167,6 @@ class WorkOrder {
       costoEstimado: json['costo_estimado']?.toString() ?? null,
 
       costoFinal: json['costo_final']?.toString() ?? null,
-
-      fechaModificacion: json['fecha_modificacion'] is String 
-          ? DateTime.tryParse(json['fecha_modificacion']) 
-          : null,
 
       correcciones: json['correcciones'] as String? ?? null,
 
@@ -280,11 +276,11 @@ class WorkOrderDetail {
 
   factory WorkOrderDetail.fromJson(Map<String, dynamic> json) {
 
-    final rawCreatedAt = json['created_at'];
+    final rawCreatedAt = json['fecha_creacion'];
 
-    final rawModifiedAt = json['modified_at'];
+    final rawModifiedAt = json['fecha_modificacion'];
 
-    final categoryValue = json['category'];
+    final categoryValue = json['category_name'] ?? json['cod_categoria'];
 
     String categoryStr = '';
 
@@ -310,15 +306,15 @@ class WorkOrderDetail {
 
     return WorkOrderDetail(
 
-      id: (json['id'] as num?)?.toInt() ?? 0,
+      id: (json['cod_orden'] as num?)?.toInt() ?? 0,
 
       category: categoryStr,
 
-      description: (json['description'] as String? ?? '').trim(),
+      description: (json['descripcion_problema'] as String? ?? '').trim(),
 
-      priority: (json['priority'] as String? ?? '').trim(),
+      priority: (json['prioridad'] as String? ?? '').trim(),
 
-      status: (json['status'] as String? ?? '').trim(),
+      status: (json['estado'] as String? ?? '').trim(),
 
       createdAt: rawCreatedAt is String ? DateTime.tryParse(rawCreatedAt) : null,
 
@@ -1027,82 +1023,6 @@ class AuthService {
 
 
 
-  Future<RegisterResponse> inactivarTecnico(String usuario, String estado) async {
-
-    try {
-
-      if (kDebugMode) {
-
-        print('🔧 Enviando solicitud para cambiar estado:');
-
-        print('  - Usuario: $usuario');
-
-        print('  - Nuevo estado: $estado');
-
-        print('  - URL: $baseUrl/api/tecnicos/$usuario/inactivar');
-
-      }
-
-
-
-      final resp = await http
-
-          .put(
-
-            Uri.parse('$baseUrl/api/tecnicos/${Uri.encodeComponent(usuario)}/inactivar'),
-
-            headers: {'Content-Type': 'application/json'},
-
-            body: jsonEncode({'estado': estado}),
-
-          )
-
-          .timeout(_requestTimeout);
-
-
-
-      if (kDebugMode) {
-
-        print('📊 Respuesta del servidor:');
-
-        print('  - Status code: ${resp.statusCode}');
-
-        print('  - Body: ${resp.body}');
-
-      }
-
-
-
-      if (resp.statusCode == 200) {
-
-        final responseData = jsonDecode(resp.body);
-
-        return RegisterResponse(
-
-            success: true, 
-
-            message: responseData['msg'] ?? 'Estado actualizado'
-
-        );
-
-      }
-
-      return const RegisterResponse(
-
-          success: false, message: 'No se pudo actualizar el estado del técnico');
-
-    } catch (_) {
-
-      return const RegisterResponse(
-
-          success: false, message: 'No hay conexión con el servidor');
-
-    }
-
-  }
-
-
-
   Future<RegisterResponse> modificarPrivilegioTecnico(String usuario, String nuevo_privilegio) async {
 
     try {
@@ -1245,9 +1165,17 @@ class AuthService {
 
       
 
-      // Intentar con cod_cliente primero (nuevo formato), luego con id (formato antiguo)
-
-      final userId = decodedToken['cod_cliente'] as int? ?? decodedToken['id'] as int?;
+      // Intentar con userId primero (nuevo formato), luego con cod_cliente, luego con id (formato antiguo)
+      
+      int? userId;
+      
+      if (decodedToken['userId'] != null) {
+        userId = int.tryParse(decodedToken['userId'].toString());
+      } else if (decodedToken['cod_cliente'] != null) {
+        userId = int.tryParse(decodedToken['cod_cliente'].toString());
+      } else if (decodedToken['id'] != null) {
+        userId = int.tryParse(decodedToken['id'].toString());
+      }
 
       
 
@@ -1329,7 +1257,7 @@ class AuthService {
 
   Future<RegisterResponse> createWorkOrder({
 
-    required String categoria,
+    required int codCategoria,
 
     String? tipo,
 
@@ -1337,7 +1265,7 @@ class AuthService {
 
     required String prioridad,
 
-    int? cod_cliente,
+    required int codCliente,
 
   }) async {
 
@@ -1375,15 +1303,15 @@ class AuthService {
 
             body: jsonEncode({
 
-              'categoria': categoria,
+              'cod_categoria': codCategoria,
 
-              'tipo': tipo ?? 'reclamo',
+              'tipo': tipo ?? 'Reparación',
 
               'descripcion_problema': descripcion_problema,
 
               'prioridad': prioridad,
 
-              'cod_cliente': cod_cliente,
+              'cod_cliente': codCliente,
 
             }),
 
@@ -1451,12 +1379,19 @@ class AuthService {
 
       final isClient = await isClientePriv();
 
-      final endpoint = isClient ? '/api/ordenes-trabajo/cliente' : '/api/ordenes-trabajo';
-
       final token = await getToken();
       if (token == null && isClient) {
         print('🔍 fetchWorkOrders - No hay token para cliente, retornando lista vacía');
         return const [];
+      }
+
+      // Para clientes, obtener su userId y filtrar por cliente
+      String endpoint = '/api/ordenes-trabajo';
+      if (isClient) {
+        final userId = await getCurrentUserId();
+        if (userId != null) {
+          endpoint = '/api/ordenes-trabajo?cod_cliente=$userId';
+        }
       }
 
       final resp = await http
@@ -1711,7 +1646,7 @@ class AuthService {
 
           .post(
 
-            Uri.parse('$baseUrl/api/equipments'),
+            Uri.parse('$baseUrl/api/equipos'),
 
             headers: {'Content-Type': 'application/json'},
 
@@ -1751,7 +1686,7 @@ class AuthService {
 
       final resp = await http
 
-          .get(Uri.parse('$baseUrl/api/equipments'))
+          .get(Uri.parse('$baseUrl/api/equipos'))
 
           .timeout(_requestTimeout);
 
@@ -1787,7 +1722,7 @@ class AuthService {
 
       final resp = await http
 
-          .delete(Uri.parse('$baseUrl/api/equipments/$codEquipos'))
+          .delete(Uri.parse('$baseUrl/api/equipos/$codEquipos'))
 
           .timeout(_requestTimeout);
 
@@ -1813,6 +1748,243 @@ class AuthService {
 
     }
 
+  }
+
+  // Función combinada: eliminar equipo y actualizar lista automáticamente
+  Future<RegisterResponse> deleteEquipmentAndUpdate(int codEquipos) async {
+
+    try {
+
+      // Primero eliminar el equipo
+      final deleteResp = await deleteEquipment(codEquipos);
+
+      if (deleteResp.success) {
+
+        // Si la eliminación fue exitosa, obtener la lista actualizada
+        try {
+
+          final updatedList = await fetchEquipments();
+
+          if (kDebugMode) {
+
+            print('🔄 Lista de equipos actualizada: ${updatedList.length} equipos');
+
+          }
+
+          return RegisterResponse(
+
+            success: true, 
+
+            message: 'Equipo eliminado y lista actualizada correctamente'
+
+          );
+
+        } catch (e) {
+
+          if (kDebugMode) print('⚠️ Error actualizando lista: $e');
+
+          return RegisterResponse(
+
+            success: true, 
+
+            message: 'Equipo eliminado, pero error al actualizar lista'
+
+          );
+
+        }
+
+      }
+
+      return deleteResp;
+
+    } catch (e) {
+
+      if (kDebugMode) print('❌ Error en deleteEquipmentAndUpdate: $e');
+
+      return const RegisterResponse(
+
+        success: false, 
+
+        message: 'Error al eliminar equipo y actualizar lista'
+
+      );
+
+    }
+
+  }
+
+
+
+  // Método para inactivar/activar cliente
+  Future<RegisterResponse> inactivarCliente(int codCliente, String estado) async {
+    try {
+      final token = await getToken();
+      if (token == null) {
+        return const RegisterResponse(
+          success: false,
+          message: 'No hay sesión activa. Por favor inicia sesión.',
+        );
+      }
+
+      final resp = await http
+          .patch(
+            Uri.parse('$baseUrl/api/clientes/$codCliente/estado'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode({
+              'estado': estado,
+            }),
+          )
+          .timeout(_requestTimeout);
+
+      if (resp.statusCode == 200) {
+        final message = estado == 'Activo' 
+          ? 'Cliente activado exitosamente'
+          : 'Cliente inactivado exitosamente';
+        return RegisterResponse(success: true, message: message);
+      }
+
+      return RegisterResponse(
+        success: false,
+        message: 'No se pudo actualizar el estado del cliente.',
+      );
+    } catch (e) {
+      return RegisterResponse(
+        success: false,
+        message: 'Error de conexión: ${e.toString()}',
+      );
+    }
+  }
+
+
+
+  // Método para eliminar técnico (solo Master)
+  Future<RegisterResponse> deleteTecnico(String usuario) async {
+    try {
+      final token = await getToken();
+      if (token == null) {
+        return const RegisterResponse(
+          success: false,
+          message: 'No hay sesión activa. Por favor inicia sesión.',
+        );
+      }
+
+      final resp = await http
+          .delete(
+            Uri.parse('$baseUrl/api/tecnicos/$usuario'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(_requestTimeout);
+
+      if (resp.statusCode == 200) {
+        return const RegisterResponse(
+          success: true,
+          message: 'Técnico eliminado exitosamente',
+        );
+      }
+
+      return RegisterResponse(
+        success: false,
+        message: 'No se pudo eliminar el técnico.',
+      );
+    } catch (e) {
+      return RegisterResponse(
+        success: false,
+        message: 'Error de conexión: ${e.toString()}',
+      );
+    }
+  }
+
+  // Método para inactivar/activar técnico
+  Future<RegisterResponse> inactivarTecnico(String usuario, String estado) async {
+    try {
+      final token = await getToken();
+      if (token == null) {
+        return const RegisterResponse(
+          success: false,
+          message: 'No hay sesión activa. Por favor inicia sesión.',
+        );
+      }
+
+      final resp = await http
+          .patch(
+            Uri.parse('$baseUrl/api/tecnicos/$usuario/estado'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode({
+              'estado': estado,
+            }),
+          )
+          .timeout(_requestTimeout);
+
+      if (resp.statusCode == 200) {
+        final message = estado == 'Activo' 
+          ? 'Técnico activado exitosamente'
+          : 'Técnico inactivado exitosamente';
+        return RegisterResponse(success: true, message: message);
+      }
+
+      return RegisterResponse(
+        success: false,
+        message: 'No se pudo actualizar el estado del técnico.',
+      );
+    } catch (e) {
+      return RegisterResponse(
+        success: false,
+        message: 'Error de conexión: ${e.toString()}',
+      );
+    }
+  }
+
+
+
+  // Método para actualizar orden de trabajo
+  Future<Map<String, dynamic>> updateWorkOrder(int id, Map<String, dynamic> updateData) async {
+    try {
+      final token = await getToken();
+      if (token == null) {
+        return {
+          'success': false,
+          'msg': 'No hay sesión activa. Por favor inicia sesión.',
+        };
+      }
+
+      final resp = await http
+          .patch(
+            Uri.parse('$baseUrl/api/ordenes-reclamos/$id'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode(updateData),
+          )
+          .timeout(_requestTimeout);
+
+      if (resp.statusCode == 200) {
+        final responseData = jsonDecode(resp.body);
+        return {
+          'success': true,
+          'msg': responseData['message'] ?? 'Orden actualizada exitosamente',
+        };
+      }
+
+      return {
+        'success': false,
+        'msg': 'No se pudo actualizar la orden de trabajo.',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'msg': 'Error de conexión: ${e.toString()}',
+      };
+    }
   }
 
 
@@ -2022,56 +2194,6 @@ class AuthService {
       }
 
       return const [];
-
-    }
-
-  }
-
-
-
-  Future<RegisterResponse> inactivarCliente(int codCliente, String estado) async {
-
-    try {
-
-      final resp = await http
-
-          .put(
-
-            Uri.parse('$baseUrl/api/clientes/$codCliente/inactivar'),
-
-            headers: {'Content-Type': 'application/json'},
-
-            body: jsonEncode({'estado': estado}),
-
-          )
-
-          .timeout(_requestTimeout);
-
-
-
-      if (resp.statusCode == 200) {
-
-        final responseData = jsonDecode(resp.body);
-
-        return RegisterResponse(
-
-            success: true, 
-
-            message: responseData['msg'] ?? 'Estado actualizado'
-
-        );
-
-      }
-
-      return const RegisterResponse(
-
-          success: false, message: 'No se pudo actualizar el estado del cliente');
-
-    } catch (_) {
-
-      return const RegisterResponse(
-
-          success: false, message: 'No hay conexión con el servidor');
 
     }
 
@@ -2289,58 +2411,6 @@ class AuthService {
 
       };
 
-    }
-  }
-
-  // Método para actualizar una orden de trabajo
-  Future<Map<String, dynamic>> updateWorkOrder(int id, Map<String, dynamic> workOrderData) async {
-    try {
-      final token = await getToken();
-      
-      // Convertir valores numéricos a strings si es necesario
-      final data = Map<String, dynamic>.from(workOrderData);
-      data.forEach((key, value) {
-        if (value is num) {
-          data[key] = value.toString();
-        }
-      });
-
-      print('🔍 AuthService - Actualizando orden $id con datos: $data');
-
-      final resp = await http.put(
-        Uri.parse('$baseUrl/api/ordenes-reclamos/$id'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode(data),
-      ).timeout(_requestTimeout);
-
-      print('🔍 AuthService - Status code: ${resp.statusCode}');
-      print('🔍 AuthService - Response body: ${resp.body}');
-
-      if (resp.statusCode == 200) {
-        final responseData = jsonDecode(resp.body);
-        print('✅ AuthService - Orden actualizada exitosamente');
-        return {
-          'success': true,
-          'msg': responseData['msg'] ?? 'Orden actualizada exitosamente',
-          'data': responseData,
-        };
-      } else {
-        final errorData = jsonDecode(resp.body);
-        print('❌ AuthService - Error actualizando orden: ${errorData['msg']}');
-        return {
-          'success': false,
-          'msg': errorData['msg'] ?? 'Error al actualizar la orden',
-        };
-      }
-    } catch (e) {
-      print('❌ AuthService - Error de conexión: $e');
-      return {
-        'success': false,
-        'msg': 'Error de conexión: ${e.toString()}',
-      };
     }
   }
 

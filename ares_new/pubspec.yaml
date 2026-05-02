@@ -1,0 +1,23 @@
+name: proyecto
+description: Proyecto - SIREST login app
+publish_to: 'none'
+version: 0.0.1
+environment:
+  sdk: ">=2.17.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.2
+  http: ^0.13.0
+  shared_preferences: ^2.0.15
+  jwt_decoder: ^2.0.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/logo_unexca.jpg
