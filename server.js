@@ -253,10 +253,12 @@ app.post('/api/import-database', async (req, res) => {
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS equipos (
-        cod_equipo INT PRIMARY KEY AUTO_INCREMENT,
-        marca VARCHAR(50),
-        modelo VARCHAR(50),
-        descripcion TEXT
+        cod_equipos INT PRIMARY KEY AUTO_INCREMENT,
+        tipo VARCHAR(30) NOT NULL,
+        marca VARCHAR(30) NOT NULL,
+        modelo VARCHAR(30) NOT NULL,
+        serial VARCHAR(30) NOT NULL,
+        cod_cliente INT DEFAULT NULL
       )
     `);
 
@@ -266,30 +268,32 @@ app.post('/api/import-database', async (req, res) => {
         usuario VARCHAR(50) UNIQUE NOT NULL,
         nombre VARCHAR(100) NOT NULL,
         password VARCHAR(255) NOT NULL,
-        cod_privilegio CHAR(2),
+        correo VARCHAR(50) DEFAULT NULL,
+        num_telefono VARCHAR(13) DEFAULT NULL,
+        cod_privilegio CHAR(2) DEFAULT '50',
         estado VARCHAR(20) DEFAULT 'Activo',
-        fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS ordenes_reclamos (
-        id INT PRIMARY KEY AUTO_INCREMENT,
-        cod_categoria INT,
+        cod_orden INT PRIMARY KEY AUTO_INCREMENT,
+        cod_equipo INT DEFAULT NULL,
+        cod_cliente INT DEFAULT NULL,
         descripcion_problema TEXT NOT NULL,
-        prioridad VARCHAR(20) NOT NULL,
-        estado VARCHAR(30) NOT NULL DEFAULT 'ABIERTA',
-        fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        cod_cliente INT,
-        cod_equipo INT,
         diagnostico TEXT,
-        costo_estimado DECIMAL(10,2),
-        costo_final DECIMAL(10,2),
-        cod_tecnico INT,
-        fecha_modificacion TIMESTAMP,
+        estado VARCHAR(30) NOT NULL DEFAULT 'ABIERTO',
+        prioridad VARCHAR(5) NOT NULL,
+        tipo VARCHAR(13) NOT NULL,
+        costo_estimado DECIMAL(10,2) DEFAULT NULL,
+        costo_final DECIMAL(10,2) DEFAULT NULL,
+        cod_categoria INT NOT NULL,
+        cod_tecnico INT DEFAULT NULL,
+        fecha_creacion TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+        fecha_modificacion TIMESTAMP NULL DEFAULT NULL,
         correcciones TEXT,
-        recomendaciones TEXT,
-        tipo VARCHAR(20)
+        recomendaciones TEXT
       )
     `);
 
