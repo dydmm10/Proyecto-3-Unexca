@@ -296,6 +296,53 @@ app.delete('/api/equipos/:id', async (req, res) => {
   }
 });
 
+// Endpoint para crear equipo
+app.post('/api/equipos', async (req, res) => {
+  try {
+    const {
+      tipo,
+      marca,
+      modelo,
+      serial,
+      cod_cliente
+    } = req.body;
+
+    // Validar campos requeridos
+    if (!tipo || !marca || !modelo || !serial) {
+      return res.status(400).json({ 
+        msg: 'Faltan campos requeridos: tipo, marca, modelo, serial' 
+      });
+    }
+
+    // Insertar nuevo equipo
+    const [result] = await pool.query(`
+      INSERT INTO equipos 
+      (tipo, marca, modelo, serial, cod_cliente)
+      VALUES (?, ?, ?, ?, ?)
+    `, [tipo, marca, modelo, serial, cod_cliente || null]);
+
+    res.status(201).json({
+      message: 'Equipo creado exitosamente',
+      cod_equipos: result.insertId,
+      data: {
+        cod_equipos: result.insertId,
+        tipo,
+        marca,
+        modelo,
+        serial,
+        cod_cliente: cod_cliente || null
+      }
+    });
+
+  } catch (error) {
+    console.error('Error creando equipo:', error);
+    res.status(500).json({ 
+      msg: 'Error creando equipo',
+      error: error.message 
+    });
+  }
+});
+
 // Endpoint para obtener categorías
 app.get('/api/categorias', async (req, res) => {
   try {
