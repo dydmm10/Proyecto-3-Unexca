@@ -197,18 +197,11 @@ app.get('/api/ordenes-reclamos/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
-    const [rows] = await pool.query(`
-      SELECT
-        o.*,
-        c.nombre AS cliente_nombre,
-        c.correo AS cliente_correo,
-        c.num_telefono AS cliente_telefono,
-        cat.nombre AS category_name
-      FROM ordenes_reclamos o
-      LEFT JOIN clientes c ON o.cod_cliente = c.cod_cliente
-      LEFT JOIN categoria cat ON o.cod_categoria = cat.cod_categoria
-      WHERE o.cod_orden = ?
-    `, [id]);
+    // Primero intentar query simple sin JOINs
+    const [rows] = await pool.query(
+      'SELECT * FROM ordenes_reclamos WHERE cod_orden = ?',
+      [id]
+    );
 
     if (rows.length === 0) {
       return res.status(404).json({ message: 'Orden de reclamo no encontrada' });
@@ -217,7 +210,7 @@ app.get('/api/ordenes-reclamos/:id', async (req, res) => {
     res.json(rows[0]);
   } catch (error) {
     console.error('Error obteniendo detalles de orden:', error);
-    res.status(500).json({ msg: 'Error obteniendo detalles de orden' });
+    res.status(500).json({ msg: 'Error obteniendo detalles de orden', error: error.message });
   }
 });
 
