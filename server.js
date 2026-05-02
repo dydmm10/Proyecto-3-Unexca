@@ -86,6 +86,14 @@ app.post('/api/login', async (req, res) => {
 
     if (tecnicoRows.length > 0) {
       const tecnico = tecnicoRows[0];
+      
+      // Verificar si el técnico está activo
+      if (tecnico.estado !== 'Activo') {
+        return res.status(403).json({ 
+          msg: 'Tu cuenta de técnico está inactiva. Contacta al administrador.' 
+        });
+      }
+      
       const isValid = await bcrypt.compare(password, tecnico.password);
       
       if (isValid) {
@@ -114,6 +122,14 @@ app.post('/api/login', async (req, res) => {
 
     if (clienteRows.length > 0) {
       const cliente = clienteRows[0];
+      
+      // Verificar si el cliente está activo
+      if (cliente.estado !== 'Activo') {
+        return res.status(403).json({ 
+          msg: 'Tu cuenta de cliente está inactiva. Contacta al administrador.' 
+        });
+      }
+      
       const isValid = await bcrypt.compare(password, cliente.password);
       
       if (isValid) {
