@@ -22,10 +22,20 @@ app.use((req, res, next) => {
   next();
 });
 
+// Si el host incluye puerto (formato host:port), extraer el puerto
+let dbHost = process.env.DB_HOST || 'localhost';
+let dbPort = process.env.DB_PORT || 3306;
+
+if (dbHost.includes(':')) {
+  const [host, port] = dbHost.split(':');
+  dbHost = host;
+  dbPort = parseInt(port) || 3306;
+}
+
 // Configuración de base de datos para Railway
 const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 3306,
+  host: dbHost,
+  port: dbPort,
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASS || 'vnrzzSYkAJtQqMIukCRGGonSELOkXYwf',
   database: process.env.DB_NAME || 'railway',
