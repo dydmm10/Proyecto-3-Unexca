@@ -1,6 +1,6 @@
-# ARES - Sistema de Gestión de Tickets Técnicos
+# ARES - Aplicativo para Atención de Reclamos y Servicio Técnico
 
-Aplicación móvil Flutter para gestión de tickets técnicos con backend Node.js y base de datos MySQL.
+Aplicación móvil Flutter para la atención y gestion de reclamos por tickets, para realizar servicio técnico.
 
 ## 🚀 Funcionalidades Principales
 
@@ -33,62 +33,17 @@ Aplicación móvil Flutter para gestión de tickets técnicos con backend Node.j
 - **Eliminar equipos** con actualización automática de la lista
 - **Asociar equipos** a clientes y tickets
 
-## 🔧 Características Técnicas
-
-### Backend (Node.js + Express)
-- **API RESTful** con endpoints seguros
-- **Autenticación JWT** para todas las operaciones
-- **Validación de datos** y manejo de errores
-- **Base de datos MySQL** con relaciones optimizadas
-- **Endpoints especializados** por rol de usuario
-
-### Frontend (Flutter)
-- **Interfaz moderna** con Material Design
-- **Navegación fluida** entre módulos
-- **Formularios validados** con feedback en tiempo real
-- **Indicadores visuales** de estado y acciones
-- **Responsive design** para diferentes pantallas
-
 ### Seguridad
 - **Restricciones por rol:** Solo Master puede eliminar técnicos
 - **Protección del usuario Master:** No puede ser inactivado ni modificado
 - **Validación de sesión** en todas las operaciones
 - **Manejo seguro de contraseñas** con bcrypt
 
-## 📋 Requisitos
-
-- **Flutter SDK** (última versión estable)
-- **Node.js LTS** (incluye `node` y `npm`)
-- **MySQL o MariaDB** (versión 8.0+ recomendada)
-
-## 🚀 Instalación y Ejecución
-
-### 1) Configurar Backend
-```bash
-cd backend
-npm install
-# Configurar variables de entorno en .env
-npm start
-```
-
-### 2) Ejecutar Aplicación Flutter
-```bash
-cd ares_new
-flutter pub get
-flutter run
-```
-
-## 🎯 Usuarios de Prueba
-
-### Master (Acceso Total)
-- **Usuario:** Jesmillan
-- **Contraseña:** [Configurar en instalación]
-
 ### Roles Disponibles
-- **Master (99):** Acceso completo a todas las funciones
-- **Administrador (92):** Gestión de usuarios y tickets
-- **Técnico (50):** Gestión de tickets asignados
-- **Cliente (42):** Creación y seguimiento de tickets propios
+- **Master:** Acceso completo a todas las funciones
+- **Administrador:** Gestión de usuarios y tickets
+- **Técnico:** Gestión de tickets asignados
+- **Cliente:** Creación y seguimiento de tickets propios
 
 ## 📊 Estructura del Proyecto
 
@@ -118,4 +73,10 @@ ares_new/
 
 ---
 
-**Desarrollado con ❤️ para gestión eficiente de tickets técnicos**
+## 📞 Soporte
+
+Para soporte técnico o preguntas, contactar al desarrollador.
+
+---
+
+**Desarrollado con ❤️ usando Flutter**
