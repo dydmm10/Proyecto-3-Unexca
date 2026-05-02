@@ -218,7 +218,15 @@ app.post('/api/import-database', async (req, res) => {
   try {
     console.log('🚀 Iniciando importación de base de datos...');
     
-    // Crear tablas
+    // Borrar tablas existentes para recrear con estructura correcta
+    await pool.query('DROP TABLE IF EXISTS ordenes_reclamos');
+    await pool.query('DROP TABLE IF EXISTS equipos');
+    await pool.query('DROP TABLE IF EXISTS tecnicos');
+    await pool.query('DROP TABLE IF EXISTS clientes');
+    await pool.query('DROP TABLE IF EXISTS categoria');
+    await pool.query('DROP TABLE IF EXISTS privilegios');
+    
+    // Crear tablas con estructura correcta
     await pool.query(`
       CREATE TABLE IF NOT EXISTS categoria (
         cod_categoria INT PRIMARY KEY,
