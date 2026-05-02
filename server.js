@@ -293,9 +293,9 @@ app.post('/api/import-database', async (req, res) => {
       )
     `);
 
-    // Insertar datos básicos
+    // Insertar datos básicos (solo si no existen)
     await pool.query(`
-      INSERT INTO privilegios (cod_privilegio, rol) VALUES
+      INSERT IGNORE INTO privilegios (cod_privilegio, rol) VALUES
       ('92', 'Administrador'),
       ('42', 'Cliente'),
       ('99', 'Master'),
@@ -303,19 +303,19 @@ app.post('/api/import-database', async (req, res) => {
     `);
 
     await pool.query(`
-      INSERT INTO categoria (cod_categoria, nombre, descripcion) VALUES
+      INSERT IGNORE INTO categoria (cod_categoria, nombre, descripcion) VALUES
       (1, 'Laptop', 'Computadoras portátiles y notebooks'),
       (2, 'PC Escritorio', 'Computadoras de escritorio y torres')
     `);
 
     await pool.query(`
-      INSERT INTO clientes (cod_cliente, usuario, nombre, password, correo, num_telefono, direccion, cod_privilegio, estado, fecha_creacion) VALUES
+      INSERT IGNORE INTO clientes (cod_cliente, usuario, nombre, password, correo, num_telefono, direccion, cod_privilegio, estado, fecha_creacion) VALUES
       (9, 'Prueba1', 'Maelo Ruiz', '$2b$10$PGx2MQOrDK1/wrpqSnTcFOlMZUaYt6NlCpqvUqso3NMAbAN1/u6EC', 'prueba@gmail.com', '+5804128417519', 'Guarenas', '42', 'Activo', '2026-04-29 19:18:00'),
       (10, 'Prueba2', 'Bryan Moncada', '$2b$10$TKB4K8q6Pt5fHSKLln1Mc.IaNVXpa123bYrBUhsVxkYvQbrwn0o1W', 'prueba@test.com', '123456789', 'Sector 1', '42', 'Activo', '2026-05-01 14:20:54')
     `);
 
     await pool.query(`
-      INSERT INTO tecnicos (cod_tecnico, usuario, nombre, password, cod_privilegio, estado, fecha_creacion) VALUES
+      INSERT IGNORE INTO tecnicos (cod_tecnico, usuario, nombre, password, cod_privilegio, estado, fecha_creacion) VALUES
       (1, 'Jesmillan', 'Jesus Millan', '$2b$10$YourHashedPasswordHere', '99', 'Activo', '2026-05-01 00:00:00'),
       (2, 'Carduty', 'Carlos Duran', '$2b$10$YourHashedPasswordHere', '92', 'Activo', '2026-05-01 00:00:00')
     `);
