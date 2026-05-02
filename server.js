@@ -471,6 +471,41 @@ app.post('/api/tecnicos', async (req, res) => {
   }
 });
 
+// Endpoint para eliminar técnico (solo Master)
+app.delete('/api/tecnicos/:usuario', async (req, res) => {
+  try {
+    const { usuario } = req.params;
+    
+    // Verificar si el técnico existe y obtener su privilegio
+    const [existing] = await pool.query(
+      'SELECT cod_privilegio FROM tecnicos WHERE usuario = ?',
+      [usuario]
+    );
+    
+    if (existing.length === 0) {
+      return res.status(404).json({ message: 'Técnico no encontrado' });
+    }
+    
+    // Verificar si es un Master y no se puede eliminar
+    if (existing[0].cod_privilegio === '99') {
+      return res.status(403).json({ 
+        message: 'No se puede eliminar al usuario Master. Esta cuenta está protegida.' 
+      });
+    }
+    
+    // Eliminar el técnico
+    await pool.query('DELETE FROM tecnicos WHERE usuario = ?', [usuario]);
+    
+    res.json({ message: 'Técnico eliminado exitosamente' });
+  } catch (error) {
+    console.error('Error eliminando técnico:', error);
+    res.status(500).json({ 
+      msg: 'Error eliminando técnico',
+      error: error.message 
+    });
+  }
+});
+
 // Endpoint para obtener equipos
 app.get('/api/equipos', async (req, res) => {
   try {
