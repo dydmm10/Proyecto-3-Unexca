@@ -271,6 +271,31 @@ app.get('/api/equipos', async (req, res) => {
   }
 });
 
+// Endpoint para eliminar equipo
+app.delete('/api/equipos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Verificar si el equipo existe
+    const [existing] = await pool.query(
+      'SELECT cod_equipos FROM equipos WHERE cod_equipos = ?',
+      [id]
+    );
+    
+    if (existing.length === 0) {
+      return res.status(404).json({ message: 'Equipo no encontrado' });
+    }
+    
+    // Eliminar el equipo
+    await pool.query('DELETE FROM equipos WHERE cod_equipos = ?', [id]);
+    
+    res.json({ message: 'Equipo eliminado exitosamente' });
+  } catch (error) {
+    console.error('Error eliminando equipo:', error);
+    res.status(500).json({ msg: 'Error eliminando equipo', error: error.message });
+  }
+});
+
 // Endpoint para obtener categorías
 app.get('/api/categorias', async (req, res) => {
   try {
