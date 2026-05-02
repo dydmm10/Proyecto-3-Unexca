@@ -2,9 +2,9 @@
   "name": "unexca-backend",
   "version": "1.0.0",
   "description": "Backend UNEXCA para Railway deployment",
-  "main": "index.js",
+  "main": "start.js",
   "scripts": {
-    "start": "node index.js",
+    "start": "node start.js",
     "dev": "node server.js",
     "build": "echo 'Build complete'",
     "test": "echo 'No tests specified'"
