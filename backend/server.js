@@ -243,8 +243,7 @@ app.get('/api/clientes', async (req, res) => {
       SELECT c.*, p.rol 
       FROM clientes c
       LEFT JOIN privilegios p ON c.cod_privilegio = p.cod_privilegio
-      WHERE c.estado = 'Activo'
-      ORDER BY c.fecha_creacion DESC
+      ORDER BY c.estado DESC, c.fecha_creacion DESC
     `);
     
     res.json(rows);
