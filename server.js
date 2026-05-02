@@ -320,6 +320,24 @@ app.post('/api/import-database', async (req, res) => {
       (2, 'Carduty', 'Carlos Duran', '$2b$10$YourHashedPasswordHere', '92', 'Activo', '2026-05-01 00:00:00')
     `);
 
+    // Insertar equipos de ejemplo
+    await pool.query(`
+      INSERT IGNORE INTO equipos (cod_equipo, marca, modelo, descripcion) VALUES
+      (1, 'Dell', 'Inspiron 15', 'Laptop Dell de 15 pulgadas, 8GB RAM, 256GB SSD'),
+      (2, 'HP', 'Pavilion Desktop', 'PC de escritorio HP, Intel i5, 8GB RAM, 1TB HDD'),
+      (3, 'Lenovo', 'ThinkPad T490', 'Laptop empresarial Lenovo, 16GB RAM, 512GB SSD'),
+      (4, 'ASUS', 'ROG Strix', 'PC gaming ASUS, AMD Ryzen 7, 16GB RAM, RTX 3060')
+    `);
+
+    // Insertar órdenes de ejemplo
+    await pool.query(`
+      INSERT IGNORE INTO ordenes_reclamos (id, cod_categoria, descripcion_problema, prioridad, estado, cod_cliente, cod_equipo, cod_tecnico, tipo) VALUES
+      (1, 1, 'La laptop no enciende, muestra pantalla negra al presionar power', 'Alta', 'ABIERTA', 9, 1, 1, 'reclamo'),
+      (2, 2, 'El PC se reinicia solo cuando se ejecutan programas pesados', 'Media', 'ABIERTA', 10, 2, 2, 'reclamo'),
+      (3, 1, 'Teclado no responde, algunas teclas no funcionan', 'Baja', 'EN PROCESO', 9, 3, 1, 'reclamo'),
+      (4, 1, 'Mantenimiento preventivo anual', 'Media', 'PROGRAMADA', 10, 4, 2, 'mantenimiento')
+    `);
+
     // Verificar
     const [result] = await pool.query(`
       SELECT 'Categorías:' as tabla, COUNT(*) as registros FROM categoria
@@ -329,6 +347,10 @@ app.post('/api/import-database', async (req, res) => {
       SELECT 'Privilegios:', COUNT(*) FROM privilegios
       UNION ALL
       SELECT 'Técnicos:', COUNT(*) FROM tecnicos
+      UNION ALL
+      SELECT 'Equipos:', COUNT(*) FROM equipos
+      UNION ALL
+      SELECT 'Órdenes:', COUNT(*) FROM ordenes_reclamos
     `);
 
     console.log('✅ Base de datos importada exitosamente');
