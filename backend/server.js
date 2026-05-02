@@ -338,7 +338,7 @@ app.post('/api/import-database', async (req, res) => {
 // Iniciar servidor SIN ensureSchema
 const startServer = async () => {
   try {
-    console.log('🚀 Iniciando servidor...');
+    console.log('🚀 Iniciando servidor SIN ensureSchema...');
     
     // Probar conexión simple a la base de datos
     await pool.query('SELECT 1');
@@ -346,8 +346,8 @@ const startServer = async () => {
     
     app.listen(PORT, () => {
       console.log(`🌍 Servidor corriendo en puerto ${PORT}`);
-      console.log(`📊 Health check: https://tu-app-production.up.railway.app/health`);
-      console.log(`📊 Import database: POST https://tu-app-production.up.railway.app/api/import-database`);
+      console.log(`📊 Health check disponible`);
+      console.log(`📊 Import database: POST /api/import-database`);
     });
   } catch (error) {
     console.error('❌ Error iniciando servidor:', error.message);
@@ -357,6 +357,17 @@ const startServer = async () => {
     });
   }
 };
+
+// Manejar cierre graceful
+process.on('SIGTERM', () => {
+  console.log('📡 Recibido SIGTERM - cerrando gracefully');
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('📡 Recibido SIGINT - cerrando gracefully');
+  process.exit(0);
+});
 
 startServer();
 
