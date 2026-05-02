@@ -281,6 +281,56 @@ app.get('/api/categorias', async (req, res) => {
   }
 });
 
+// Endpoint para crear orden de trabajo
+app.post('/api/ordenes-reclamos', async (req, res) => {
+  try {
+    const {
+      cod_categoria,
+      descripcion_problema,
+      prioridad,
+      tipo = 'Reparación',
+      cod_cliente,
+      cod_equipo = null
+    } = req.body;
+
+    // Validar campos requeridos
+    if (!cod_categoria || !descripcion_problema || !prioridad || !cod_cliente) {
+      return res.status(400).json({ 
+        msg: 'Faltan campos requeridos: cod_categoria, descripcion_problema, prioridad, cod_cliente' 
+      });
+    }
+
+    // Insertar nueva orden
+    const [result] = await pool.query(`
+      INSERT INTO ordenes_reclamos 
+      (cod_categoria, descripcion_problema, prioridad, tipo, cod_cliente, cod_equipo, estado)
+      VALUES (?, ?, ?, ?, ?, ?, 'ABIERTA')
+    `, [cod_categoria, descripcion_problema, prioridad, tipo, cod_cliente, cod_equipo]);
+
+    res.status(201).json({
+      message: 'Orden de trabajo creada exitosamente',
+      cod_orden: result.insertId,
+      data: {
+        cod_orden: result.insertId,
+        cod_categoria,
+        descripcion_problema,
+        prioridad,
+        tipo,
+        cod_cliente,
+        cod_equipo,
+        estado: 'ABIERTA'
+      }
+    });
+
+  } catch (error) {
+    console.error('Error creando orden:', error);
+    res.status(500).json({ 
+      msg: 'Error creando orden de trabajo',
+      error: error.message 
+    });
+  }
+});
+
 // Endpoint para importar base de datos
 app.post('/api/import-database', async (req, res) => {
   try {
