@@ -4890,22 +4890,7 @@ class _CreateWorkOrderPageState extends State<CreateWorkOrderPage> {
 
     
 
-    if (mounted) {
-
-      print('Creating order with:');
-
-      print('cod_categoria: $_categoria');
-
-      print('tipo: $_tipo');
-
-      print('descripcion_problema: ${_descriptionController.text.trim()}');
-
-      print('prioridad: $_prioridad');
-
-      print('cod_cliente: $_codCliente');
-
-    }
-
+    
     
 
     final result = await _authService.createWorkOrder(

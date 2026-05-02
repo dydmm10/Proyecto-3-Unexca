@@ -524,13 +524,8 @@ class _TecnicosPageState extends State<TecnicosPage> {
   }
 
   Future<void> _eliminarTecnico(Tecnico tecnico) async {
-    print('🔍 Iniciando _eliminarTecnico');
-    print('  - usuario: ${tecnico.usuario}');
-    print('  - nombre: ${tecnico.nombre}');
-    
     // Validar permisos: solo Master puede eliminar técnicos
     if (!_isMaster) {
-      print('❌ ERROR: Permisos insuficientes para eliminar técnico');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -544,7 +539,6 @@ class _TecnicosPageState extends State<TecnicosPage> {
     
     // Validar que el usuario sea válido
     if (tecnico.usuario.isEmpty) {
-      print('❌ ERROR: usuario está vacío');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -555,8 +549,6 @@ class _TecnicosPageState extends State<TecnicosPage> {
       }
       return;
     }
-    
-    print('✅ usuario es válido y permisos suficientes');
     
     // Mostrar diálogo de confirmación
     final confirmado = await showDialog<bool>(
