@@ -409,6 +409,68 @@ app.patch('/api/tecnicos/:usuario/privilegio', async (req, res) => {
   }
 });
 
+// Endpoint para crear técnico
+app.post('/api/tecnicos', async (req, res) => {
+  try {
+    const {
+      nombre,
+      usuario,
+      correo,
+      password,
+      num_telefono,
+      cod_privilegio
+    } = req.body;
+    
+    // Validaciones
+    if (!nombre || !usuario || !password) {
+      return res.status(400).json({ 
+        msg: 'Nombre, usuario y contraseña son requeridos' 
+      });
+    }
+    
+    // Validar que el privilegio sea válido
+    const privilegiosValidos = ['99', '92', '50']; // Master, Administrador, Técnico
+    if (cod_privilegio && !privilegiosValidos.includes(cod_privilegio)) {
+      return res.status(400).json({ 
+        msg: 'Privilegio no válido. Debe ser 99 (Master), 92 (Administrador) o 50 (Técnico)' 
+      });
+    }
+    
+    // Verificar si el usuario ya existe
+    const [existing] = await pool.query(
+      'SELECT usuario FROM tecnicos WHERE usuario = ?',
+      [usuario]
+    );
+    
+    if (existing.length > 0) {
+      return res.status(409).json({ 
+        message: 'El usuario ya existe' 
+      });
+    }
+    
+    // Encriptar contraseña
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    // Crear técnico
+    const [result] = await pool.query(
+      `INSERT INTO tecnicos (nombre, usuario, correo, password, num_telefono, cod_privilegio, estado, fecha_creacion) 
+       VALUES (?, ?, ?, ?, ?, ?, 'Activo', CURRENT_TIMESTAMP)`,
+      [nombre, usuario, correo, hashedPassword, num_telefono, cod_privilegio || '50']
+    );
+    
+    res.status(201).json({ 
+      message: 'Técnico creado exitosamente',
+      cod_tecnico: result.insertId
+    });
+  } catch (error) {
+    console.error('Error creando técnico:', error);
+    res.status(500).json({ 
+      msg: 'Error creando técnico',
+      error: error.message 
+    });
+  }
+});
+
 // Endpoint para obtener equipos
 app.get('/api/equipos', async (req, res) => {
   try {
