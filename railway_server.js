@@ -6,6 +6,8 @@ const jwt = require('jsonwebtoken');
 const cors = require('cors');
 
 const app = express();
+
+// Middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cors());
@@ -13,9 +15,9 @@ app.use(cors());
 // Configurar puerto para Railway
 const PORT = process.env.PORT || 3000;
 
-// Middleware para logging de requests
+// Logging simple
 app.use((req, res, next) => {
-  console.log(`${req.method} ${req.path}`, req.body);
+  console.log(`${req.method} ${req.path}`);
   next();
 });
 
@@ -27,39 +29,35 @@ const pool = mysql.createPool({
   database: process.env.DB_NAME || 'flutter_login',
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  // Opciones adicionales para Railway
+  acquireTimeout: 60000,
+  timeout: 60000,
+  reconnect: true
 });
 
-// Función de inicialización simplificada para Railway
-async function initializeDatabase() {
+// Health check endpoint
+app.get('/health', async (req, res) => {
   try {
-    console.log('🔗 Conectando a la base de datos...');
-    
-    // Probar conexión
     await pool.query('SELECT 1');
-    console.log('✅ Conexión a base de datos exitosa');
-    
-    // Verificar tablas básicas
-    const [tables] = await pool.query('SHOW TABLES');
-    console.log('📋 Tablas encontradas:', tables.map(t => Object.values(t)[0]));
-    
-    return true;
+    res.json({ 
+      status: 'OK', 
+      timestamp: new Date().toISOString(),
+      port: PORT,
+      database: 'connected'
+    });
   } catch (error) {
-    console.error('❌ Error de base de datos:', error.message);
-    // No detener el servidor si la BD falla
-    return false;
+    res.status(500).json({ 
+      status: 'ERROR', 
+      timestamp: new Date().toISOString(),
+      port: PORT,
+      database: 'disconnected',
+      error: error.message
+    });
   }
-}
-
-// Endpoints básicos para verificar funcionamiento
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    timestamp: new Date().toISOString(),
-    port: PORT 
-  });
 });
 
+// Login endpoint
 app.post('/api/login', async (req, res) => {
   try {
     const { usuario, password } = req.body;
@@ -131,7 +129,7 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// Endpoint para obtener órdenes (simplificado)
+// Endpoint para órdenes de trabajo
 app.get('/api/ordenes-trabajo', async (req, res) => {
   try {
     const [rows] = await pool.query(`
@@ -150,18 +148,81 @@ app.get('/api/ordenes-trabajo', async (req, res) => {
   }
 });
 
-// Iniciar servidor
-initializeDatabase().then(() => {
-  app.listen(PORT, () => {
-    console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
-    console.log(`🌍 URL: https://tu-app-production.up.railway.app`);
-  });
-}).catch((error) => {
-  console.error('❌ Error al iniciar servidor:', error.message);
-  // Iniciar servidor de todas formas
-  app.listen(PORT, () => {
-    console.log(`🚀 Servidor corriendo en puerto ${PORT} (sin BD)`);
-  });
+// Endpoint para órdenes de mantenimiento
+app.get('/api/ordenes-mantenimiento', async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT o.*, c.nombre AS cliente_nombre, cat.nombre AS category_name
+      FROM ordenes_reclamos o
+      LEFT JOIN clientes c ON o.cod_cliente = c.cod_cliente
+      LEFT JOIN categoria cat ON o.cod_categoria = cat.cod_categoria
+      WHERE o.tipo = 'Mantenimiento'
+      ORDER BY o.fecha_creacion DESC
+    `);
+    
+    res.json(rows);
+  } catch (error) {
+    console.error('Error obteniendo mantenimientos:', error);
+    res.status(500).json({ msg: 'Error obteniendo mantenimientos' });
+  }
 });
+
+// Endpoint para detalles de orden
+app.get('/api/ordenes-reclamos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const [rows] = await pool.query(`
+      SELECT
+        o.*,
+        c.nombre AS cliente_nombre,
+        c.email AS cliente_correo,
+        c.num_telefono AS cliente_telefono,
+        cat.nombre AS category_name,
+        e.marca AS equipo_marca,
+        e.modelo AS equipo_modelo,
+        t.nombre AS tecnico_nombre
+      FROM ordenes_reclamos o
+      LEFT JOIN clientes c ON o.cod_cliente = c.cod_cliente
+      LEFT JOIN categoria cat ON o.cod_categoria = cat.cod_categoria
+      LEFT JOIN equipos e ON o.cod_equipo = e.cod_equipo
+      LEFT JOIN tecnicos t ON o.cod_tecnico = t.cod_tecnico
+      WHERE o.id = ?
+    `, [id]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'Orden de reclamo no encontrada' });
+    }
+
+    res.json(rows[0]);
+  } catch (error) {
+    console.error('Error obteniendo detalles de orden:', error);
+    res.status(500).json({ msg: 'Error obteniendo detalles de orden' });
+  }
+});
+
+// Iniciar servidor SIN ensureSchema
+const startServer = async () => {
+  try {
+    console.log('🚀 Iniciando servidor...');
+    
+    // Probar conexión simple a la base de datos
+    await pool.query('SELECT 1');
+    console.log('✅ Base de datos conectada');
+    
+    app.listen(PORT, () => {
+      console.log(`🌍 Servidor corriendo en puerto ${PORT}`);
+      console.log(`📊 Health check: https://tu-app-production.up.railway.app/health`);
+    });
+  } catch (error) {
+    console.error('❌ Error iniciando servidor:', error.message);
+    // Iniciar servidor de todas formas para que Railway no falle
+    app.listen(PORT, () => {
+      console.log(`🚀 Servidor corriendo en puerto ${PORT} (sin BD)`);
+    });
+  }
+};
+
+startServer();
 
 module.exports = app;
