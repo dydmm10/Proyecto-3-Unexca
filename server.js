@@ -203,15 +203,10 @@ app.get('/api/ordenes-reclamos/:id', async (req, res) => {
         c.nombre AS cliente_nombre,
         c.correo AS cliente_correo,
         c.num_telefono AS cliente_telefono,
-        cat.nombre AS category_name,
-        e.marca AS equipo_marca,
-        e.modelo AS equipo_modelo,
-        t.nombre AS tecnico_nombre
+        cat.nombre AS category_name
       FROM ordenes_reclamos o
       LEFT JOIN clientes c ON o.cod_cliente = c.cod_cliente
       LEFT JOIN categoria cat ON o.cod_categoria = cat.cod_categoria
-      LEFT JOIN equipos e ON o.cod_equipo = e.cod_equipo
-      LEFT JOIN tecnicos t ON o.cod_tecnico = t.cod_tecnico
       WHERE o.cod_orden = ?
     `, [id]);
 
