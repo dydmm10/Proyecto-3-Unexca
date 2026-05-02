@@ -197,11 +197,15 @@ app.get('/api/ordenes-reclamos/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
-    // Primero intentar query simple sin JOINs
-    const [rows] = await pool.query(
-      'SELECT * FROM ordenes_reclamos WHERE cod_orden = ?',
-      [id]
-    );
+    // Query con JOIN de categoria para obtener el nombre
+    const [rows] = await pool.query(`
+      SELECT 
+        o.*,
+        cat.nombre as category_name
+      FROM ordenes_reclamos o
+      LEFT JOIN categoria cat ON o.cod_categoria = cat.cod_categoria
+      WHERE o.cod_orden = ?
+    `, [id]);
 
     if (rows.length === 0) {
       return res.status(404).json({ message: 'Orden de reclamo no encontrada' });
