@@ -25,15 +25,19 @@ app.use((req, res, next) => {
 const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASS || '05621994',
-  database: process.env.DB_NAME || 'flutter_login',
+  password: process.env.DB_PASS || 'vnrzzSYkAJtQqMIukCRGGonSELOkXYwf',
+  database: process.env.DB_NAME || 'railway',
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
   // Opciones adicionales para Railway
   acquireTimeout: 60000,
   timeout: 60000,
-  reconnect: true
+  reconnect: true,
+  // Configuración SSL para Railway
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
 // Health check endpoint
