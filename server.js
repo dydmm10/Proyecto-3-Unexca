@@ -352,6 +352,49 @@ app.patch('/api/clientes/:id/estado', async (req, res) => {
   }
 });
 
+// Endpoint para cambiar privilegio de técnico
+app.patch('/api/tecnicos/:usuario/privilegio', async (req, res) => {
+  try {
+    const { usuario } = req.params;
+    const { cod_privilegio } = req.body;
+    
+    // Validar que el privilegio sea válido
+    const privilegiosValidos = ['99', '92', '50']; // Master, Administrador, Técnico
+    if (!privilegiosValidos.includes(cod_privilegio)) {
+      return res.status(400).json({ 
+        msg: 'Privilegio no válido. Debe ser 99 (Master), 92 (Administrador) o 50 (Técnico)' 
+      });
+    }
+    
+    // Verificar si el técnico existe
+    const [existing] = await pool.query(
+      'SELECT usuario FROM tecnicos WHERE usuario = ?',
+      [usuario]
+    );
+    
+    if (existing.length === 0) {
+      return res.status(404).json({ message: 'Técnico no encontrado' });
+    }
+    
+    // Actualizar privilegio del técnico
+    await pool.query(
+      'UPDATE tecnicos SET cod_privilegio = ? WHERE usuario = ?',
+      [cod_privilegio, usuario]
+    );
+    
+    res.json({ 
+      message: 'Privilegio de técnico actualizado exitosamente',
+      cod_privilegio: cod_privilegio
+    });
+  } catch (error) {
+    console.error('Error actualizando privilegio de técnico:', error);
+    res.status(500).json({ 
+      msg: 'Error actualizando privilegio de técnico',
+      error: error.message 
+    });
+  }
+});
+
 // Endpoint para obtener equipos
 app.get('/api/equipos', async (req, res) => {
   try {
