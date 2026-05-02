@@ -1,3 +1,4 @@
+console.log('🚀 SERVIDOR RAILWAY - NUEVA VERSIÓN SIN ENSURESCHEMA');
 require('dotenv').config();
 const express = require('express');
 const mysql = require('mysql2/promise');
