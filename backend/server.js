@@ -31,10 +31,6 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  // Opciones adicionales para Railway
-  acquireTimeout: 60000,
-  timeout: 60000,
-  reconnect: true,
   // Configuración SSL para Railway
   ssl: {
     rejectUnauthorized: false
